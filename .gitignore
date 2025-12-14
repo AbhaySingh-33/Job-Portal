@@ -6,4 +6,6 @@ build/
 .env.local
 *.log
 .DS_Store
-frontend/
+# Track project folders in monorepo
+# (removed ignoring of frontend/ and services/)
+# If you want to exclude build outputs inside them, use nested .gitignore files.
