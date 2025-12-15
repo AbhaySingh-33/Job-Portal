@@ -37,11 +37,11 @@ const SubscriptionPage = () => {
     // Open Razorpay Checkout
     const options = {
       key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-      amount: order.amount,
+      amount: order.order.amount,
       currency: "INR",
       name: "Hire Haven",
       description: "Find Job easily",
-      order_id: order.id,
+      order_id: order.order.id,
       handler: async function (response: any) {
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
           response;
