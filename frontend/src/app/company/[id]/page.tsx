@@ -715,7 +715,7 @@ const CompanyPage = () => {
                       <Hash size={16} />
                       <span>{job.openings} opening{job.openings !== 1 ? 's' : ''}</span>
                     </div>
-                    <Link href={`/job/${job.job_id}`}>
+                    <Link href={`/jobs/${job.job_id}`}>
                       <Button size="sm">View Details</Button>
                     </Link>
                   </div>

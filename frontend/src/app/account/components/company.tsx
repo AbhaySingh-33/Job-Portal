@@ -89,7 +89,7 @@ const Company = () => {
     }
   }
 
-  async function deleteCompany(id: string) {
+  async function deleteCompany(id: number) {
     if(confirm("Are you sure you want to delete this company?")) {
       try {
       setBtnLoading(true);
