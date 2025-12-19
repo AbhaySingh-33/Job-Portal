@@ -11,6 +11,10 @@ app.use(express.json());
 
 connectProducer();
 
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 app.use("/api/auth", authRouter);
 
 export default app;
