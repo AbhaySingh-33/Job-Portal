@@ -2,6 +2,7 @@ import express from "express";
 import { isAuth } from "../middleware/auth.js";
 import uploadFile from "../middleware/multer.js";
 import { createCompany, deleteCompany , createJob, updateJob ,getALLCompany,getCompanyDetails, getAllActiveJobs, getSingleJob, getAllApplicationsForJob, updateApplicationStatus} from "../controllers/job.js";
+import { recommendJobs } from "../controllers/recommend.controller.js";
 
 const router = express.Router();
 
@@ -16,4 +17,5 @@ router.get("/:jobId",getSingleJob);
 router.get("/applications/:jobId",isAuth,getAllApplicationsForJob);
 router.put("/application/status/:id",isAuth,updateApplicationStatus);
 
+router.post("/recommend", isAuth, recommendJobs);
 export default router;

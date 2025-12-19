@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { Ban, Briefcase, Filter, X, Search } from 'lucide-react';
 import JobCard from './components/JobCard';
+import RecommendedJobs from './components/RecommendedJobs';
 import { motion } from 'framer-motion';
 
 const location: string[]= [
@@ -86,6 +87,22 @@ const JobPage = () => {
           <p className="text-gray-600 dark:text-gray-400">
             {jobs.length} jobs available
           </p>
+        </motion.div>
+
+        {/* Recommended Jobs Section */}
+        <RecommendedJobs />
+
+        {/* All Jobs Section */}
+        <motion.div 
+          className="mb-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+            <Briefcase size={24} className="text-blue-600" />
+            All Jobs
+          </h2>
         </motion.div>
 
         {/* Filter Section */}

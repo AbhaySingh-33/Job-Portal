@@ -15,3 +15,21 @@ docker-compose.yaml
 # Track project folders in monorepo
 # (removed ignoring of frontend/ and services/)
 # If you want to exclude build outputs inside them, use nested .gitignore files.
+
+# Deployment and configuration files
+DEPLOYMENT_WINDOWS.md
+auth-deployment.yaml
+configmap.yaml
+frontend-deployment.yaml
+ingress.yaml
+job-deployment.yaml
+kafka-deployment.yaml
+namespace.yaml
+payments-deployment.yaml
+secret.yaml
+user-deployment.yaml
+utils-deployment.yaml
+build-images.ps1
+cleanup.ps1
+deploy.ps1
+monitor.ps1

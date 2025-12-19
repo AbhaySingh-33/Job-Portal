@@ -244,7 +244,7 @@ export const getAllActiveJobs = TryCatch(
     };
 
     let queryString = `SELECT 
-    j.job_id, j.title, j.description, j.salary, j.location, j.is_active,
+    j.job_id, j.title, j.description, j.salary, j.location, j.is_active, j.openings,
     j.job_type, j.role, j.work_location, j.created_at, 
     c.name AS company_name, c.logo AS company_logo, c.company_id AS company_id 
     FROM jobs j 
