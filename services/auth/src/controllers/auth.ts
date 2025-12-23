@@ -1,72 +1,140 @@
 import { Request, Response, NextFunction } from "express";
 import { sql } from "../utils/db.js";
 import bcrypt from "bcrypt";
-import  ErrorHandler  from "../utils/errorHandler.js";
+import ErrorHandler from "../utils/errorHandler.js";
 import { TryCatch } from "../utils/TryCatch.js";
 import getBuffer from "../utils/buffer.js";
 import axios from "axios";
 import jwt from "jsonwebtoken";
-import { forgotPasswordTemplate } from "../template.js";
+import { forgotPasswordTemplate, getVerifyEmailHtml, getOtpHtml } from "../template.js";
 import { publishToTOpic } from "../producer.js";
 import { redisClient } from "../index.js";
+import crypto from "crypto";
 
 export const registerUser = TryCatch(
   async (req: Request, res: Response, next: NextFunction) => {
     const { name, email, password, phoneNumber, role, bio } = req.body;
 
     if (!name || !email || !password || !phoneNumber || !role) {
-      throw new ErrorHandler("Please fill all details",400);
+      throw new ErrorHandler("Please fill all details", 400);
+    }
+
+    const rateLimitKey = `register-rate-limit:${req.ip}:${email}`;
+
+    if (await redisClient.get(rateLimitKey)) {
+      throw new ErrorHandler(
+        "Too many registration attempts. Please try again later.",
+        429
+      );
     }
 
     const existingUsers =
       await sql`SELECT user_id FROM users WHERE email = ${email}`;
 
     if (existingUsers.length > 0) {
-      throw new ErrorHandler("User with this email already exists",409);
+      throw new ErrorHandler("User with this email already exists", 409);
     }
 
     const hashPassword = await bcrypt.hash(password, 10);
+
+    const verifyToken = crypto.randomBytes(32).toString("hex");
+    const verifyKey = `verify:${verifyToken}`;
+    
+    let dataToStore: any = {
+      name,
+      email,
+      password: hashPassword,
+      phoneNumber,
+      role,
+      bio
+    };
+
+    // Handle file upload for jobseekers
+    if (role === "jobseeker") {
+      const file = req.file;
+      const fileBuffer = getBuffer(file);
+
+      if (!fileBuffer || !fileBuffer.content) {
+        throw new ErrorHandler("Resume is required for jobseekers", 400);
+      }
+
+      const { data } = await axios.post(
+        `${process.env.UPLOAD_SERVICE}/api/utils/upload`,
+        { buffer: fileBuffer.content }
+      );
+
+      dataToStore.resume = data.url;
+      dataToStore.resume_public_id = data.public_id;
+    }
+
+    await redisClient.set(verifyKey, JSON.stringify(dataToStore), { ex: 3600 }); // 1 hour expiration
+
+    const message = {
+      to: email,
+      subject: "VERIFY YOUR EMAIL - HIRE HEAVEN",
+      html: getVerifyEmailHtml(email, verifyToken),
+    };
+
+    //publish message to kafka topic
+    publishToTOpic("send-mail", message);
+    
+    await redisClient.set(rateLimitKey, "1", { ex: 60 }); // 1 minute rate limit
+
+    res.json({
+      message: "Verification email sent. Please check your inbox.",
+    });
+  }
+);
+
+//------------------- Verify Email ------------------//
+
+export const verifyEmail = TryCatch(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { token } = req.params;
+
+    if (!token) {
+      throw new ErrorHandler("Verification token is required", 400);
+    }
+
+    const verifyKey = `verify:${token}`;
+    const storedData = await redisClient.get(verifyKey);
+
+    if (!storedData) {
+      throw new ErrorHandler("Invalid or expired verification token", 400);
+    }
+
+    const userData = typeof storedData === 'string' ? JSON.parse(storedData) : storedData;
+    const { name, email, password, phoneNumber, role, bio, resume, resume_public_id } = userData;
 
     let registeredUser;
 
     if (role === "recruiter") {
       const [user] =
         await sql`INSERT INTO users (name, email, password, phone_number, role)
-                  VALUES (${name}, ${email}, ${hashPassword}, ${phoneNumber}, ${role})
-                  RETURNING user_id, name, email, phone_number, role, created_at;`;
+        VALUES (${name}, ${email}, ${password}, ${phoneNumber}, ${role})
+        RETURNING user_id, name, email, phone_number, role, created_at;`;
       registeredUser = user;
-
     } else if (role === "jobseeker") {
-      const file = req.file;
-
-      const fileBuffer= getBuffer(file);
-
-      if(!fileBuffer || !fileBuffer.content){
-        throw new ErrorHandler("Failed to Generate Buffer",500);
-      }
-
-      const {data}=await axios.post(`${process.env.UPLOAD_SERVICE}/api/utils/upload`,
-        {buffer: fileBuffer.content}
-      );
-
-
-      const [user] =   
-      await sql`INSERT INTO users (name, email, password, phone_number, role, bio, resume, resume_public_id) 
-      VALUES(${name}, ${email}, ${hashPassword}, ${phoneNumber}, ${role}, ${bio}, ${data.url}, ${data.public_id}) 
+      const [user] =
+        await sql`INSERT INTO users (name, email, password, phone_number, role, bio, resume, resume_public_id) 
+      VALUES(${name}, ${email}, ${password}, ${phoneNumber}, ${role}, ${bio}, ${resume}, ${resume_public_id}) 
       RETURNING user_id, name, email, phone_number, role, bio, resume, created_at`;
-
       registeredUser = user;
     }
 
-    const token = jwt.sign(
-      { id: registeredUser?.user_id }, 
-      process.env.JWT_SECRET as string, 
-      { expiresIn: "10d" });
+    // Clean up verification token
+    await redisClient.del(verifyKey);
+
+    const authToken = jwt.sign(
+      { id: registeredUser?.user_id },
+      process.env.JWT_SECRET as string,
+      { expiresIn: "10d" }
+    );
 
     res.json({
-      message: "User registered successfully",
-      registeredUser,
-      token
+      message: "Email verified and user registered successfully",
+      user: registeredUser,
+      token: authToken,
     });
   }
 );
@@ -78,11 +146,10 @@ export const loginUser = TryCatch(
     const { email, password } = req.body;
 
     if (!email || !password) {
-      throw new ErrorHandler("Please fill all details",400);
+      throw new ErrorHandler("Please fill all details", 400);
     }
 
-    const user =
-      await sql`
+    const user = await sql`
         SELECT 
           u.user_id,
           u.name,
@@ -103,7 +170,7 @@ export const loginUser = TryCatch(
       `;
 
     if (user.length === 0) {
-      throw new ErrorHandler("Invalid credentials",400);
+      throw new ErrorHandler("Invalid credentials", 400);
     }
 
     const userObject = user[0];
@@ -111,98 +178,99 @@ export const loginUser = TryCatch(
     const matchPassword = await bcrypt.compare(password, userObject.password);
 
     if (!matchPassword) {
-      throw new ErrorHandler("Invalid credentials",400);
+      throw new ErrorHandler("Invalid credentials", 400);
     }
 
-    userObject.skills= userObject.skills || [];
+    userObject.skills = userObject.skills || [];
 
     // remove password before sending response
     delete userObject.password;
 
     const token = jwt.sign(
-      { id: userObject?.user_id }, 
-      process.env.JWT_SECRET as string, 
-      { expiresIn: "10d" });
+      { id: userObject?.user_id },
+      process.env.JWT_SECRET as string,
+      { expiresIn: "10d" }
+    );
 
     res.json({
       message: "User logged in successfully",
       user: userObject,
-      token
+      token,
     });
   }
 );
 
 //------------------- Forgot Password ------------------//
 
-export const forgotPassword = TryCatch(async(req,res,next)=>{
-  const {email} = req.body;
+export const forgotPassword = TryCatch(async (req, res, next) => {
+  const { email } = req.body;
 
-  if(!email){
-    throw new ErrorHandler("email is required",400);
+  if (!email) {
+    throw new ErrorHandler("email is required", 400);
   }
 
-  const users= 
+  const users =
     await sql`SELECT user_id, email FROM users WHERE email = ${email}`;
-  
-  if(users.length===0){
+
+  if (users.length === 0) {
     return res.json({
       message: "If that email exists, we have sent a reset link",
     });
   }
   const user = users[0];
 
-  const resetToken= jwt.sign(
+  const resetToken = jwt.sign(
     {
-      email: user.email,type:"reset"
+      email: user.email,
+      type: "reset",
     },
     process.env.JWT_SECRET as string,
-    {expiresIn:"15m"}
+    { expiresIn: "15m" }
   );
 
-  const resetLink = `${process.env.Frontend_Url}/reset/${resetToken}`
+  const resetLink = `${process.env.Frontend_Url}/reset/${resetToken}`;
 
   const message = {
     to: email,
     subject: "RESET YOUR PASSWORD - HIRE HEAVEN",
-    html: forgotPasswordTemplate(resetLink)
-  }
+    html: forgotPasswordTemplate(resetLink),
+  };
 
-  await redisClient.set(`forget :${email}`,resetToken,{ex:900}); // 15 minutes expiration
+  await redisClient.set(`forget :${email}`, resetToken, { ex: 900 }); // 15 minutes expiration
 
   //publish message to kafka topic
   publishToTOpic("send-mail", message);
   res.json({
     message: "If that email exists, we have sent a reset link",
   });
-
-})
+});
 
 //------------------- Reset Password ------------------//
 
-export const resetPassword = TryCatch(async(req,res,next)=>{
-  const {token} = req.params;
-  const {password} = req.body;
+export const resetPassword = TryCatch(async (req, res, next) => {
+  const { token } = req.params;
+  const { password } = req.body;
 
   let decoded: any;
-  try{
+  try {
     decoded = jwt.verify(token, process.env.JWT_SECRET as string);
-  } catch(error){
-    throw new ErrorHandler("Invalid or expired token",400);
+  } catch (error) {
+    throw new ErrorHandler("Invalid or expired token", 400);
   }
 
-  if(decoded.type !== "reset"){
-    throw new ErrorHandler("Invalid or expired token",400);
+  if (decoded.type !== "reset") {
+    throw new ErrorHandler("Invalid or expired token", 400);
   }
   const email = decoded.email;
 
   const redisToken = await redisClient.get(`forget :${email}`);
 
-  if( !redisToken || redisToken !== token){
-    throw new ErrorHandler("Invalid or expired token",400);
+  if (!redisToken || redisToken !== token) {
+    throw new ErrorHandler("Invalid or expired token", 400);
   }
-  
+
   await redisClient.del(`forget :${email}`);
-  const hashPassword = await bcrypt.hash(password,10);
+  const hashPassword = await bcrypt.hash(password, 10);
 
   await sql`UPDATE users SET password = ${hashPassword} WHERE email = ${email}`;
 

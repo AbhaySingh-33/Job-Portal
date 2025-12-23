@@ -51,14 +51,8 @@ const RegisterPage = () => {
         formData
       );
       toast.success(data.message);
-      Cookies.set("token", data.token, {
-        expires: 15,
-        secure: false,
-        path: "/",
-      });
-
-      setUser(data.registeredUser);
-      setIsAuth(true);
+      // Don't set auth state immediately - wait for email verification
+      // Redirect to a verification pending page or show message
     } catch (error: any) {
       toast.error(error.response.data.message);
       setIsAuth(false);
