@@ -159,7 +159,7 @@ This is an automated message, please do not reply.
 };
 
 
-export const getOtpHtml = ( email: string, otp: number) => {
+export const getOtpHtml = (otp: string) => {
 const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -308,15 +308,15 @@ letter-spacing: 6px !important;
 <!-- Header -->
 <tr>
 <td class="header">
-<span class="brand">Authentication App</span>
+<span class="brand">Hire Heaven</span>
 </td>
 </tr>
 <!-- Body -->
 <tr>
 <td class="p-32">
-<h1 class="title">Verify your email - ${email}</h1>
+<h1 class="title">Login Verification Code</h1>
 <p class="text">
-Use the verification code below to complete your sign-in to Authentication App.
+Use the verification code below to complete your login to Hire Heaven.
 </p>
 <!-- OTP -->
 <table role="presentation" class="otp-wrap" border="0" cellspacing="0" cellpadding="0">
@@ -333,7 +333,7 @@ Use the verification code below to complete your sign-in to Authentication App.
 <!-- Footer -->
 <tr>
 <td class="footer">
-© 2025 Authentication App. All rights reserved.
+© 2025 Hire Heaven. All rights reserved.
 </td>
 </tr>
 <tr>

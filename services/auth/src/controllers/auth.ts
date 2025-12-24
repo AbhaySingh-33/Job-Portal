@@ -139,7 +139,7 @@ export const verifyEmail = TryCatch(
   }
 );
 
-//------------------- Login User ------------------//
+//------------------- Login User (Step 1: Verify credentials and send OTP) ------------------//
 
 export const loginUser = TryCatch(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -147,6 +147,13 @@ export const loginUser = TryCatch(
 
     if (!email || !password) {
       throw new ErrorHandler("Please fill all details", 400);
+    }
+
+    const rateLimitKey = `login-rate-limit:${req.ip}:${email}`;
+    const attemptCount = await redisClient.get(rateLimitKey);
+    
+    if (attemptCount && parseInt(attemptCount as string) >= 5) {
+      throw new ErrorHandler("Too many login attempts. Please try again later.", 429);
     }
 
     const user = await sql`
@@ -170,27 +177,110 @@ export const loginUser = TryCatch(
       `;
 
     if (user.length === 0) {
+      await redisClient.incr(rateLimitKey);
+      await redisClient.expire(rateLimitKey, 900); // 15 minutes
       throw new ErrorHandler("Invalid credentials", 400);
     }
 
     const userObject = user[0];
-
     const matchPassword = await bcrypt.compare(password, userObject.password);
 
     if (!matchPassword) {
+      await redisClient.incr(rateLimitKey);
+      await redisClient.expire(rateLimitKey, 900);
       throw new ErrorHandler("Invalid credentials", 400);
     }
 
-    userObject.skills = userObject.skills || [];
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpKey = `otp:${email}`;
+    
+    await redisClient.set(otpKey, otp, { ex: 300 }); // 5 minutes expiration
 
-    // remove password before sending response
-    delete userObject.password;
+    const message = {
+      to: email,
+      subject: "LOGIN VERIFICATION - HIRE HEAVEN",
+      html: getOtpHtml(otp),
+    };
+
+    publishToTOpic("send-mail", message);
+
+    res.json({
+      message: "OTP sent to your email. Please verify to complete login.",
+      requiresOTP: true
+    });
+  }
+);
+
+//------------------- Verify OTP and Complete Login ------------------//
+
+export const verifyOTPAndLogin = TryCatch(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      throw new ErrorHandler("Email and OTP are required", 400);
+    }
+
+    const otpRateLimitKey = `otp-rate-limit:${req.ip}:${email}`;
+    const otpCount = await redisClient.get(otpRateLimitKey);
+    
+    if (otpCount && parseInt(otpCount as string) >= 3) {
+      throw new ErrorHandler("Too many OTP attempts. Please request a new OTP.", 429);
+    }
+
+    const otpKey = `otp:${email}`;
+    const storedOTP = await redisClient.get(otpKey);
+
+    console.log('OTP Debug:', { email, receivedOTP: otp, storedOTP, otpKey });
+
+    if (!storedOTP) {
+      throw new ErrorHandler("OTP expired or invalid", 400);
+    }
+
+    // Trim whitespace and ensure string comparison
+    const cleanOTP = otp.toString().trim();
+    const cleanStoredOTP = storedOTP.toString().trim();
+
+    if (cleanStoredOTP !== cleanOTP) {
+      await redisClient.incr(otpRateLimitKey);
+      await redisClient.expire(otpRateLimitKey, 300); // 5 minutes
+      throw new ErrorHandler("Invalid OTP", 400);
+    }
+
+    // OTP verified, get user data and complete login
+    const user = await sql`
+        SELECT 
+          u.user_id,
+          u.name,
+          u.email,
+          u.phone_number,
+          u.role,
+          u.bio,
+          u.resume,
+          u.profile_pic,
+          u.subscription,
+          ARRAY_AGG(s.name) FILTER (WHERE s.name IS NOT NULL) AS skills
+        FROM users u
+        LEFT JOIN user_skills us ON u.user_id = us.user_id
+        LEFT JOIN skills s ON us.skill_id = s.skill_id
+        WHERE u.email = ${email}
+        GROUP BY u.user_id;
+      `;
+
+    const userObject = user[0];
+    userObject.skills = userObject.skills || [];
 
     const token = jwt.sign(
       { id: userObject?.user_id },
       process.env.JWT_SECRET as string,
       { expiresIn: "10d" }
     );
+
+    // Clean up OTP and rate limit keys
+    await redisClient.del(otpKey);
+    await redisClient.del(otpRateLimitKey);
+    await redisClient.del(`login-rate-limit:${req.ip}:${email}`);
 
     res.json({
       message: "User logged in successfully",
