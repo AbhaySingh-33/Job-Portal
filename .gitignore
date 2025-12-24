@@ -33,3 +33,14 @@ build-images.ps1
 cleanup.ps1
 deploy.ps1
 monitor.ps1
+# Development and testing files
+.env
+debug_jobs.py
+Dockerfile
+IMPLEMENTATIONS_*.md
+MIGRATION_CHECKLIST.md
+quickstart.bat
+requirements.txt
+SEMANTIC_SEARCH_*.md
+test_api.py
+test_local.py

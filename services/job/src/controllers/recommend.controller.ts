@@ -7,8 +7,8 @@ import axios from "axios";
 const PREFERRED_ML_URL = process.env.ML_SERVICE_URL;
 const ML_CANDIDATES = [
   PREFERRED_ML_URL,
-  "http://ml-recommendation:9001",
-  "http://localhost:9001",
+  "http://ml-recommendation:8000",
+  "http://localhost:8000",
 ].filter(Boolean) as string[];
 
 export const recommendJobs = TryCatch(
