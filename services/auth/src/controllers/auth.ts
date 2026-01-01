@@ -7,7 +7,7 @@ import getBuffer from "../utils/buffer.js";
 import axios from "axios";
 import jwt from "jsonwebtoken";
 import { forgotPasswordTemplate, getVerifyEmailHtml, getOtpHtml } from "../template.js";
-import { publishToTOpic } from "../producer.js";
+import { publishToTopic } from "../producer.js";
 import { redisClient } from "../index.js";
 import crypto from "crypto";
 
@@ -76,7 +76,7 @@ export const registerUser = TryCatch(
     };
 
     //publish message to kafka topic
-    publishToTOpic("send-mail", message);
+    publishToTopic("send-mail", message);
     
     await redisClient.set(rateLimitKey, "1", { ex: 60 }); // 1 minute rate limit
 
@@ -203,7 +203,7 @@ export const loginUser = TryCatch(
       html: getOtpHtml(otp),
     };
 
-    publishToTOpic("send-mail", message);
+    publishToTopic("send-mail", message);
 
     res.json({
       message: "OTP sent to your email. Please verify to complete login.",
@@ -329,7 +329,7 @@ export const forgotPassword = TryCatch(async (req, res, next) => {
   await redisClient.set(`forget :${email}`, resetToken, { ex: 900 }); // 15 minutes expiration
 
   //publish message to kafka topic
-  publishToTOpic("send-mail", message);
+      publishToTopic("send-mail", message);
   res.json({
     message: "If that email exists, we have sent a reset link",
   });

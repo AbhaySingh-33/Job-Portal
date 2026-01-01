@@ -5,7 +5,7 @@ import { sql } from "../utils/db.js";
 import getBuffer from "../utils/buffer.js";
 import axios from "axios";
 import { applicationStatusUpdateTemplate } from "../templates.js";
-import { publishToTOpic } from "../producer.js";
+import { publishToTopic } from "../producer.js";
 
 export const createCompany = TryCatch(
   async (req: AuthenticatedRequest, res, next) => {
@@ -362,7 +362,7 @@ export const updateApplicationStatus = TryCatch(
     }
 
     //publish message to kafka topic
-    publishToTOpic('send-mail',message).catch((err)=>{
+    publishToTopic('send-mail',message).catch((err)=>{
       console.error("Error publishing to topic:",err);
     });
 

@@ -2,6 +2,7 @@ import app from "./app.js";
 import dotenv from "dotenv";
 import { sql } from "./utils/db.js"
 import { Redis } from "@upstash/redis";
+import { connectProducer } from "./producer.js";
 
 dotenv.config();
 
@@ -72,8 +73,10 @@ export async function initDb() {
   }
 }
 
-initDb().then(()=> {
-        app.listen(process.env.PORT || 3000, ()=> {
+initDb().then(async () => { // Make this async
+    await connectProducer(); // <--- Connect Kafka before starting server
+    
+    app.listen(process.env.PORT || 3000, () => {
         console.log("Auth service is running");
-    })
+    });
 })

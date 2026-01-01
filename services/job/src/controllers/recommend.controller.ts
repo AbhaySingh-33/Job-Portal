@@ -9,6 +9,7 @@ const ML_CANDIDATES = [
   PREFERRED_ML_URL,
   "http://ml-recommendation:8000",
   "http://localhost:8000",
+  "http://127.0.0.1:8000",
 ].filter(Boolean) as string[];
 
 export const recommendJobs = TryCatch(
@@ -53,7 +54,8 @@ export const recommendJobs = TryCatch(
         }
       }
       if (!data) {
-        console.error("ML Service unreachable via:", ML_CANDIDATES.join(", "));
+        const msg = lastErr?.response?.data?.error || lastErr?.message || "unknown error";
+        console.error("ML Service unreachable via:", ML_CANDIDATES.join(", "), "reason:", msg);
         throw new ErrorHandler("ML service is unavailable", 503);
       }
 
@@ -114,7 +116,17 @@ export const recommendJobs = TryCatch(
         match_scores: matchScores ?? (Array.isArray((data as any)?.scores) ? (data as any).scores : []),
       });
     } catch (error: any) {
-      console.error("ML Service Error:", error?.message || error);
+      if (error instanceof ErrorHandler) {
+        throw error;
+      }
+
+      const reason =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Unknown error";
+
+      console.error("Recommendation Error:", reason);
       throw new ErrorHandler(
         "Failed to get recommendations. Please try again later.",
         500

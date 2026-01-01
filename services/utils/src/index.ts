@@ -7,7 +7,9 @@ import { startSendMailConsumer } from './consumer.js';
 
 dotenv.config();
 
-startSendMailConsumer();
+(async () => {
+    await startSendMailConsumer();
+})();
 
 cloudinary.config({ 
     cloud_name: process.env.CLOUD_NAME, 
