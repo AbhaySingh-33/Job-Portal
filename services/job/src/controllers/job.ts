@@ -238,12 +238,18 @@ export const getCompanyDetails = TryCatch(
 
 export const getAllActiveJobs = TryCatch(
   async (req: AuthenticatedRequest, res, next) => {
-    const { title, location } = req.query as {
+    const { title, location, page = '1', limit = '9' } = req.query as {
       title?: string;
       location?: string;
+      page?: string;
+      limit?: string;
     };
 
-    let queryString = `SELECT 
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const offset = (pageNum - 1) * limitNum;
+
+    let baseQuery = `SELECT 
     j.job_id, j.title, j.description, j.salary, j.location, j.is_active, j.openings,
     j.job_type, j.role, j.work_location, j.created_at, 
     c.name AS company_name, c.logo AS company_logo, c.company_id AS company_id 
@@ -251,26 +257,46 @@ export const getAllActiveJobs = TryCatch(
     JOIN companies c ON j.company_id = c.company_id 
     WHERE j.is_active = true`;
 
+    let countQuery = `SELECT COUNT(*) as total FROM jobs j WHERE j.is_active = true`;
+
     const values = [];
     let paramIndex = 1;
 
     if (title) {
-      queryString += ` AND j.title ILIKE $${paramIndex}`;
+      baseQuery += ` AND j.title ILIKE $${paramIndex}`;
+      countQuery += ` AND j.title ILIKE $${paramIndex}`;
       values.push(`%${title}%`);
       paramIndex++;
     }
 
     if (location) {
-      queryString += ` AND j.location ILIKE $${paramIndex}`;
+      baseQuery += ` AND j.location ILIKE $${paramIndex}`;
+      countQuery += ` AND j.location ILIKE $${paramIndex}`;
       values.push(`%${location}%`);
       paramIndex++;
     }
 
-    queryString += `;`;
+    baseQuery += ` ORDER BY j.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    values.push(limitNum, offset);
 
-    const jobs = await sql.query(queryString, values);
+    const [jobs, totalResult] = await Promise.all([
+      sql.query(baseQuery, values),
+      sql.query(countQuery, values.slice(0, -2))
+    ]);
 
-    res.json(jobs);
+    const total = parseInt(totalResult[0].total, 10);
+    const totalPages = Math.ceil(total / limitNum);
+
+    res.json({
+      jobs,
+      pagination: {
+        currentPage: pageNum,
+        totalPages,
+        totalJobs: total,
+        hasNextPage: pageNum < totalPages,
+        hasPrevPage: pageNum > 1
+      }
+    });
   }
 );
 

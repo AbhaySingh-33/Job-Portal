@@ -10,10 +10,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Ban, Briefcase, Filter, X, Search } from 'lucide-react';
+import { Ban, Briefcase, Filter, X, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import JobCard from './components/JobCard';
 import RecommendedJobs from './components/RecommendedJobs';
 import { motion } from 'framer-motion';
+
+interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalJobs: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+interface JobsResponse {
+  jobs: Job[];
+  pagination: PaginationInfo;
+}
 
 const location: string[]= [
   "Delhi",
@@ -27,22 +40,33 @@ const location: string[]= [
 
 const JobPage = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    currentPage: 1,
+    totalPages: 1,
+    totalJobs: 0,
+    hasNextPage: false,
+    hasPrevPage: false
+  });
   const [loading, setLoading] = useState(true);
   const [filterLocation, setFilterLocation] = useState("");
   const [filterTitle, setFilterTitle] = useState("");
   const [tempTitle, setTempTitle] = useState("");
   const [tempLocation, setTempLocation] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const fetchJobs = async (title: string, location: string) => {
+  const fetchJobs = async (title: string, location: string, page: number = 1) => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
       if (title) params.append('title', title);
       if (location) params.append('location', location);
+      params.append('page', page.toString());
+      params.append('limit', '9');
       
-      const { data } = await axios.get(`${job_service}/api/job/all?${params}`);
-      setJobs(data);
+      const { data }: { data: JobsResponse } = await axios.get(`${job_service}/api/job/all?${params}`);
+      setJobs(data.jobs);
+      setPagination(data.pagination);
     } catch (error) {
       console.log(error);
     } finally {
@@ -51,12 +75,13 @@ const JobPage = () => {
   };
 
   useEffect(() => {
-    fetchJobs(filterTitle, filterLocation);
-  }, [filterTitle, filterLocation]);
+    fetchJobs(filterTitle, filterLocation, currentPage);
+  }, [filterTitle, filterLocation, currentPage]);
 
   const handleApplyFilters = () => {
     setFilterTitle(tempTitle);
     setFilterLocation(tempLocation);
+    setCurrentPage(1);
     setDialogOpen(false);
   };
 
@@ -65,6 +90,12 @@ const JobPage = () => {
     setFilterLocation("");
     setTempTitle("");
     setTempLocation("");
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const hasActiveFilters = filterTitle || filterLocation;
@@ -85,7 +116,7 @@ const JobPage = () => {
             Explore <span className="text-red-500">Opportunities</span>
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            {jobs.length} jobs available
+            {pagination.totalJobs} jobs available
           </p>
         </motion.div>
 
@@ -178,11 +209,75 @@ const JobPage = () => {
         </div>
 
         {jobs.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {jobs.map((job, index) => (
-              <JobCard key={job.job_id} job={job} index={index} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {jobs.map((job, index) => (
+                <JobCard key={job.job_id} job={job} index={index} />
+              ))}
+            </div>
+            
+            {/* Pagination */}
+            {pagination.totalPages > 1 && (
+              <motion.div 
+                className="flex justify-center items-center gap-2 mt-8"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  disabled={!pagination.hasPrevPage}
+                  className="gap-1"
+                >
+                  <ChevronLeft size={16} />
+                  Previous
+                </Button>
+                
+                <div className="flex gap-1">
+                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                    .filter(page => 
+                      page === 1 || 
+                      page === pagination.totalPages || 
+                      Math.abs(page - pagination.currentPage) <= 1
+                    )
+                    .map((page, index, array) => (
+                      <React.Fragment key={page}>
+                        {index > 0 && array[index - 1] !== page - 1 && (
+                          <span className="px-2 py-1 text-gray-500">...</span>
+                        )}
+                        <Button
+                          variant={page === pagination.currentPage ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(page)}
+                          className="min-w-[40px]"
+                        >
+                          {page}
+                        </Button>
+                      </React.Fragment>
+                    ))
+                  }
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  disabled={!pagination.hasNextPage}
+                  className="gap-1"
+                >
+                  Next
+                  <ChevronRight size={16} />
+                </Button>
+              </motion.div>
+            )}
+            
+            {/* Pagination Info */}
+            <div className="text-center text-sm text-gray-600 mt-4">
+              Showing {((pagination.currentPage - 1) * 9) + 1} to {Math.min(pagination.currentPage * 9, pagination.totalJobs)} of {pagination.totalJobs} jobs
+            </div>
+          </>
         ) : (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}

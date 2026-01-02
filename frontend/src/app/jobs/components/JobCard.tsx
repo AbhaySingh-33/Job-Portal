@@ -116,14 +116,14 @@ const JobCard: React.FC<JobCardProps> = ({ job, index }) => {
             )}
           </div>
 
-          {/* Role Badge */}
-          <div className="flex items-center justify-between mb-4">
-            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+          {/* Role Badge and Openings */}
+          <div className="flex items-start gap-2 mb-4 flex-wrap">
+            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 flex-shrink-0 max-w-none whitespace-normal leading-relaxed">
               {job.role}
             </Badge>
             
             {/* Openings Count */}
-            <span className="text-xs text-gray-500 dark:text-gray-400">
+            <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto flex-shrink-0">
               {job.openings || 1} opening{(job.openings || 1) !== 1 ? 's' : ''}
             </span>
           </div>
