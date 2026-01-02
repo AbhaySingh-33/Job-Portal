@@ -5,72 +5,56 @@ from pathlib import Path
 
 _BASE_DIR = Path(__file__).resolve().parent.parent
 _MODEL_DIR = _BASE_DIR / "model"
+_SENTENCE_MODEL_DIR = _MODEL_DIR / "sentence_model"
 
-_model = None
+# Globals (loaded once)
+model = None
+jobs_df = None
+job_embeddings = None
 
-def _get_model():
-    """Lazily load the sentence-transformer model to avoid blocking imports."""
-    global _model
-    if _model is None:
-        _model = SentenceTransformer('all-MiniLM-L6-v2')
-    return _model
 
-def get_recommendations(query_skills, num_recommendations: int = 5, threshold: float = 0.3):
-    """
-    Recommend jobs based on semantic similarity.
+def load_artifacts():
+    """Load ML artifacts once at startup."""
+    global model, jobs_df, job_embeddings
 
-    Args:
-        query_skills: str or list of skills to search for
-        num_recommendations: max number of jobs to return
-        threshold: minimum similarity score (0-1, default 0.3)
+    model = SentenceTransformer(str(_SENTENCE_MODEL_DIR))
+    jobs_df = joblib.load(_MODEL_DIR / "jobs.pkl")
+    job_embeddings = joblib.load(_MODEL_DIR / "job_embeddings.pkl")
 
-    Returns:
-        List of recommended jobs with scores OR an error dict
-    """
-    # Load the jobs database (saved during training)
-    try:
-        jobs_df = joblib.load(_MODEL_DIR / "jobs.pkl")
-        job_embeddings = joblib.load(_MODEL_DIR / "job_embeddings.pkl")
-    except FileNotFoundError as e:
-        return {"error": f"Model files not found: {str(e)}. Please run training first."}
-    except Exception as e:
-        return {"error": f"Failed to load model artifacts: {e}"}
+    if not torch.is_tensor(job_embeddings):
+        job_embeddings = torch.tensor(job_embeddings)
 
-    # Handle both string and list inputs
+
+def get_recommendations(query_skills, num_recommendations=5, threshold=0.3):
+    if model is None:
+        return {"error": "Model not loaded"}
+
     if isinstance(query_skills, list):
-        query_text = ' '.join(query_skills)
+        query_text = " ".join(query_skills)
     else:
-        query_text = query_skills
+        query_text = str(query_skills)
 
-    # Encode the user's input skills into a semantic vector
-    model = _get_model()
+    if not query_text.strip():
+        return {"error": "Skills cannot be empty"}
+
     query_embedding = model.encode(query_text, convert_to_tensor=True)
-
-    # Calculate Cosine Similarity between query and all jobs
     cosine_scores = util.cos_sim(query_embedding, job_embeddings)[0]
 
-    # Get the top K results
-    top_results = torch.topk(cosine_scores, k=min(num_recommendations, len(jobs_df)))
+    top_k = min(num_recommendations, len(jobs_df))
+    top_results = torch.topk(cosine_scores, k=top_k)
 
-    recommended_jobs = []
+    recommendations = []
     for score, idx in zip(top_results.values, top_results.indices):
-        score_value = float(score)
-        idx_value = idx.item()
-
-        if score_value < threshold:
+        score_val = float(score)
+        if score_val < threshold:
             continue
 
-        recommended_jobs.append({
-            "jobId": int(jobs_df.iloc[idx_value]["jobId"]),
-            "title": jobs_df.iloc[idx_value]["title"],
-            "skills": jobs_df.iloc[idx_value]["skills"],
-            "score": score_value
+        job = jobs_df.iloc[idx.item()]
+        recommendations.append({
+            "jobId": int(job["jobId"]),
+            "title": job["title"],
+            "skills": job["skills"],
+            "score": score_val
         })
 
-    return recommended_jobs
-
-# Backward compatibility wrapper expected by API or older callers
-def recommend(skills, num_recommendations: int = 5, threshold: float = 0.3, top_k: int = None):
-    if top_k:
-        num_recommendations = top_k
-    return get_recommendations(skills, num_recommendations=num_recommendations, threshold=threshold)
+    return recommendations
