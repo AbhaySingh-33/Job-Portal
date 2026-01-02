@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List, Union, Optional
 
-from recommend import load_artifacts, get_recommendations
+from src.recommend import load_artifacts, get_recommendations
 
 app = FastAPI(title="Job Recommendation Engine", version="2.0-semantic")
 
