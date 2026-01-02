@@ -1,11 +1,11 @@
 {
   "name": "utils",
   "version": "1.0.0",
-  "main": "dist/index.js",
+  "main": "index.js",
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc",
+    "build": "npm install && tsc",
     "start": "node dist/index.js",
     "dev": "concurrently \"tsc -w\" \"nodemon dist/index.js\""
   },
@@ -21,8 +21,7 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "kafkajs": "^2.2.4",
-    "nodemailer": "^7.0.11",
-    "typescript": "^5.3.3"
+    "nodemailer": "^7.0.11"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
@@ -32,6 +31,7 @@
     "@types/node": "^20.10.0",
     "@types/nodemailer": "^7.0.4",
     "concurrently": "^9.2.1",
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.1.11",
+    "typescript": "^5.9.3"
   }
 }
