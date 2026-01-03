@@ -21,38 +21,68 @@ export const startSendMailConsumer = async () => {
     
     await consumer.subscribe({ topic: "send-mail", fromBeginning: false });
     
-    // Transporter ko loop ke bahar init karo (Performance Optimization)
+    // SMTP Configuration with better timeout and error handling
+    const smtpPort = Number(process.env.SMTP_PORT) || 587;
     const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT),
-        secure: true,
+        port: smtpPort,
+        secure: smtpPort === 465, // true for 465, false for other ports
         auth: {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASSWORD,
         },
+        tls: {
+            rejectUnauthorized: false
+        },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 10000,
     });
+
+    // Verify SMTP connection
+    try {
+        await transporter.verify();
+        console.log('✅ SMTP connection verified');
+    } catch (error: any) {
+        console.error('❌ SMTP verification failed:', error.message);
+        console.log('⚠️ Will attempt to send emails anyway...');
+    }
 
     await consumer.run({
       eachMessage: async ({ topic, partition, message }) => {
         try {
             const payload = message.value?.toString();
-            if (!payload) return;
+            if (!payload) {
+                console.log('⚠️ Empty message received');
+                return;
+            }
 
+            console.log('📨 Processing email message...');
             const { to, subject, html } = JSON.parse(payload);
 
-            await transporter.sendMail({
-                from: '"HireHeaven" <no-reply@hireheaven.com>', // Proper format
+            const info = await transporter.sendMail({
+                from: process.env.SMTP_USER || '"HireHeaven" <no-reply@hireheaven.com>',
                 to,
                 subject,
                 html,
             });
-            console.log(`📧 Email sent successfully to ${to}`);
-        } catch (error) {
-            console.error("❌ Failed to send mail:", error);
+            console.log(`✅ Email sent successfully to ${to}. MessageId: ${info.messageId}`);
+        } catch (error: any) {
+            console.error("❌ Failed to send mail:", error.message);
+            console.error("Details:", {
+                code: error.code,
+                command: error.command,
+                responseCode: error.responseCode
+            });
         }
       },
     });
-    } catch (error) {
-        console.error("❌ Failed to start Kafka consumer:", error);
+    } catch (error: any) {
+        console.error("❌ Failed to start Kafka consumer:", error.message);
+        // Retry connection after delay
+        setTimeout(() => {
+            console.log('🔄 Retrying Kafka consumer connection...');
+            startSendMailConsumer();
+        }, 5000);
     }
 };
