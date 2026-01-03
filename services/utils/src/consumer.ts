@@ -32,32 +32,30 @@ export const startSendMailConsumer = async () => {
     // SMTP Configuration with better timeout and error handling
     const smtpPort = Number(process.env.SMTP_PORT) || 587;
     const isResend = process.env.SMTP_HOST?.includes('resend');
-    const isSendGrid = process.env.SMTP_HOST?.includes('sendgrid');
     
     console.log(`📧 SMTP Config: ${process.env.SMTP_HOST}:${smtpPort} (user: ${process.env.SMTP_USER})`);
+    console.log(`🔑 API Key length: ${process.env.SMTP_PASSWORD?.length || 0} chars`);
     
-    // Different config for different providers
+    // Resend-specific configuration
     const transportConfig: any = {
         host: process.env.SMTP_HOST,
         port: smtpPort,
-        // Resend uses SSL (port 465), others use STARTTLS (port 587)
-        secure: isResend ? true : smtpPort === 465,
+        secure: smtpPort === 465, // true for port 465
         auth: {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASSWORD,
         },
-        connectionTimeout: 30000,
-        greetingTimeout: 30000,
-        socketTimeout: 30000,
+        tls: {
+            rejectUnauthorized: false // Accept self-signed certificates
+        },
+        connectionTimeout: 60000, // 60 seconds
+        greetingTimeout: 60000,
+        socketTimeout: 60000,
+        logger: true, // Enable logging for debugging
+        debug: false,
     };
     
-    // Add TLS config for non-Resend providers
-    if (!isResend) {
-        transportConfig.tls = {
-            rejectUnauthorized: false,
-            minVersion: 'TLSv1.2'
-        };
-    }
+    console.log(`🔧 Transport config: secure=${transportConfig.secure}, port=${transportConfig.port}`);
     
     const transporter = nodemailer.createTransport(transportConfig);
     
@@ -67,7 +65,12 @@ export const startSendMailConsumer = async () => {
     transporter.verify((error, success) => {
         if (error) {
             console.error('❌ SMTP verification failed:', error.message);
+            console.error('Error code:', error.code);
             console.log('⚠️ Check your SMTP API key/password!');
+            if (isResend) {
+                console.log('💡 Resend API key should start with "re_"');
+                console.log('💡 Get API key from: https://resend.com/api-keys');
+            }
             if (isResend) {
                 console.log('💡 Resend: Make sure API key is correct (starts with re_)');
             }
