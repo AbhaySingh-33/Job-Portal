@@ -7,7 +7,8 @@ import axios from "axios";
 const PREFERRED_ML_URL = process.env.ML_SERVICE_URL;
 const ML_CANDIDATES = [
   PREFERRED_ML_URL,
-  "http://ml-recommendation:8000",
+  "https://job-portal-ml-recommendation.onrender.com", // Production ML service
+  "http://ml-recommendation:8000", // Docker compose
   "http://localhost:8000",
   "http://127.0.0.1:8000",
 ].filter(Boolean) as string[];
@@ -45,8 +46,9 @@ export const recommendJobs = TryCatch(
         try {
           const resp = await axios.post(`${base}/recommend`, {
             skills: userSkills,
-            user_id: user.user_id,
-          }, { timeout: 5000 });
+            num_recommendations: 10,
+            threshold: 0.3
+          }, { timeout: 10000 });
           data = resp.data;
           break;
         } catch (e: any) {
