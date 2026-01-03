@@ -31,34 +31,43 @@ export const startSendMailConsumer = async () => {
     
     // SMTP Configuration with better timeout and error handling
     const smtpPort = Number(process.env.SMTP_PORT) || 587;
+    const isGmail = process.env.SMTP_HOST?.includes('gmail');
+    
     console.log(`📧 SMTP Config: ${process.env.SMTP_HOST}:${smtpPort} (user: ${process.env.SMTP_USER})`);
     
-    const transporter = nodemailer.createTransport({
+    // For Gmail, prefer port 587 with STARTTLS
+    const transportConfig: any = {
         host: process.env.SMTP_HOST,
         port: smtpPort,
-        secure: smtpPort === 465, // true for 465, false for other ports
+        secure: false, // Use STARTTLS instead of SSL
+        requireTLS: true,
         auth: {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASSWORD,
         },
         tls: {
-            rejectUnauthorized: false
+            rejectUnauthorized: false,
+            minVersion: 'TLSv1.2'
         },
-        connectionTimeout: 15000,
-        greetingTimeout: 15000,
-        socketTimeout: 15000,
-        pool: true, // Use pooled connections
-        maxConnections: 5,
-        maxMessages: 100,
-    });
+        connectionTimeout: 30000,
+        greetingTimeout: 30000,
+        socketTimeout: 30000,
+    };
+    
+    const transporter = nodemailer.createTransport(transportConfig);
+    
+    let smtpReady = false;
 
     // Verify SMTP connection (non-blocking)
     transporter.verify((error, success) => {
         if (error) {
             console.error('❌ SMTP verification failed:', error.message);
             console.log('⚠️ Check your SMTP environment variables!');
+            console.log('💡 For Gmail: Use port 587, enable 2FA, and use App Password');
+            smtpReady = false;
         } else {
             console.log('✅ SMTP connection verified - Ready to send emails');
+            smtpReady = true;
         }
     });
 
@@ -83,12 +92,13 @@ export const startSendMailConsumer = async () => {
                     html,
                 }),
                 new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Email send timeout after 30s')), 30000)
+                    setTimeout(() => reject(new Error('Email send timeout after 45s')), 45000)
                 )
             ]);
 
             const info = await sendMailWithTimeout;
             console.log(`✅ Email sent successfully to ${to}. MessageId: ${(info as any).messageId}`);
+            smtpReady = true;
         } catch (error: any) {
             console.error("❌ Failed to send mail:", error.message);
             if (error.code || error.command || error.responseCode) {
@@ -97,6 +107,9 @@ export const startSendMailConsumer = async () => {
                     command: error.command,
                     responseCode: error.responseCode
                 });
+            }
+            if (error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED') {
+                console.log('💡 Hint: For Gmail use port 587 with App Password (not regular password)');
             }
             // Don't throw - just log and continue with next message
         }
