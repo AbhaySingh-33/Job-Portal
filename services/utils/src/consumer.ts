@@ -31,28 +31,33 @@ export const startSendMailConsumer = async () => {
     
     // SMTP Configuration with better timeout and error handling
     const smtpPort = Number(process.env.SMTP_PORT) || 587;
-    const isGmail = process.env.SMTP_HOST?.includes('gmail');
+    const isResend = process.env.SMTP_HOST?.includes('resend');
+    const isSendGrid = process.env.SMTP_HOST?.includes('sendgrid');
     
     console.log(`📧 SMTP Config: ${process.env.SMTP_HOST}:${smtpPort} (user: ${process.env.SMTP_USER})`);
     
-    // For Gmail, prefer port 587 with STARTTLS
+    // Different config for different providers
     const transportConfig: any = {
         host: process.env.SMTP_HOST,
         port: smtpPort,
-        secure: false, // Use STARTTLS instead of SSL
-        requireTLS: true,
+        // Resend uses SSL (port 465), others use STARTTLS (port 587)
+        secure: isResend ? true : smtpPort === 465,
         auth: {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASSWORD,
-        },
-        tls: {
-            rejectUnauthorized: false,
-            minVersion: 'TLSv1.2'
         },
         connectionTimeout: 30000,
         greetingTimeout: 30000,
         socketTimeout: 30000,
     };
+    
+    // Add TLS config for non-Resend providers
+    if (!isResend) {
+        transportConfig.tls = {
+            rejectUnauthorized: false,
+            minVersion: 'TLSv1.2'
+        };
+    }
     
     const transporter = nodemailer.createTransport(transportConfig);
     
@@ -62,8 +67,10 @@ export const startSendMailConsumer = async () => {
     transporter.verify((error, success) => {
         if (error) {
             console.error('❌ SMTP verification failed:', error.message);
-            console.log('⚠️ Check your SMTP environment variables!');
-            console.log('💡 For Gmail: Use port 587, enable 2FA, and use App Password');
+            console.log('⚠️ Check your SMTP API key/password!');
+            if (isResend) {
+                console.log('💡 Resend: Make sure API key is correct (starts with re_)');
+            }
             smtpReady = false;
         } else {
             console.log('✅ SMTP connection verified - Ready to send emails');
