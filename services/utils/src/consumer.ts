@@ -6,11 +6,19 @@ dotenv.config({ quiet: true });
 
 export const startSendMailConsumer = async () => {
   try {
+    // Validate SMTP environment variables
+    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
+      console.error('❌ Missing SMTP environment variables!');
+      console.log('Required: SMTP_HOST, SMTP_USER, SMTP_PASSWORD, SMTP_PORT');
+      console.log('Email functionality will NOT work until these are set.');
+    }
+
     const kafka = getKafkaClient("mail-service");
     const consumer = kafka.consumer({ 
       groupId: "mail-service-group",
-      sessionTimeout: 30000,
-      heartbeatInterval: 3000,
+      sessionTimeout: 60000, // Increased to 60 seconds
+      heartbeatInterval: 5000, // Increased to 5 seconds
+      rebalanceTimeout: 60000,
       retry: {
         retries: 8
       }
@@ -23,6 +31,8 @@ export const startSendMailConsumer = async () => {
     
     // SMTP Configuration with better timeout and error handling
     const smtpPort = Number(process.env.SMTP_PORT) || 587;
+    console.log(`📧 SMTP Config: ${process.env.SMTP_HOST}:${smtpPort} (user: ${process.env.SMTP_USER})`);
+    
     const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
         port: smtpPort,
@@ -34,19 +44,23 @@ export const startSendMailConsumer = async () => {
         tls: {
             rejectUnauthorized: false
         },
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 10000,
+        connectionTimeout: 15000,
+        greetingTimeout: 15000,
+        socketTimeout: 15000,
+        pool: true, // Use pooled connections
+        maxConnections: 5,
+        maxMessages: 100,
     });
 
-    // Verify SMTP connection
-    try {
-        await transporter.verify();
-        console.log('✅ SMTP connection verified');
-    } catch (error: any) {
-        console.error('❌ SMTP verification failed:', error.message);
-        console.log('⚠️ Will attempt to send emails anyway...');
-    }
+    // Verify SMTP connection (non-blocking)
+    transporter.verify((error, success) => {
+        if (error) {
+            console.error('❌ SMTP verification failed:', error.message);
+            console.log('⚠️ Check your SMTP environment variables!');
+        } else {
+            console.log('✅ SMTP connection verified - Ready to send emails');
+        }
+    });
 
     await consumer.run({
       eachMessage: async ({ topic, partition, message }) => {
@@ -60,20 +74,31 @@ export const startSendMailConsumer = async () => {
             console.log('📨 Processing email message...');
             const { to, subject, html } = JSON.parse(payload);
 
-            const info = await transporter.sendMail({
-                from: process.env.SMTP_USER || '"HireHeaven" <no-reply@hireheaven.com>',
-                to,
-                subject,
-                html,
-            });
-            console.log(`✅ Email sent successfully to ${to}. MessageId: ${info.messageId}`);
+            // Add timeout for email sending
+            const sendMailWithTimeout = Promise.race([
+                transporter.sendMail({
+                    from: process.env.SMTP_USER || '"HireHeaven" <no-reply@hireheaven.com>',
+                    to,
+                    subject,
+                    html,
+                }),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Email send timeout after 30s')), 30000)
+                )
+            ]);
+
+            const info = await sendMailWithTimeout;
+            console.log(`✅ Email sent successfully to ${to}. MessageId: ${(info as any).messageId}`);
         } catch (error: any) {
             console.error("❌ Failed to send mail:", error.message);
-            console.error("Details:", {
-                code: error.code,
-                command: error.command,
-                responseCode: error.responseCode
-            });
+            if (error.code || error.command || error.responseCode) {
+                console.error("Details:", {
+                    code: error.code,
+                    command: error.command,
+                    responseCode: error.responseCode
+                });
+            }
+            // Don't throw - just log and continue with next message
         }
       },
     });
