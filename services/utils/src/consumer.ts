@@ -90,10 +90,17 @@ export const startSendMailConsumer = async () => {
             console.log('📨 Processing email message...');
             const { to, subject, html } = JSON.parse(payload);
 
+            // Use appropriate "from" address based on SMTP provider
+            let fromAddress = process.env.SMTP_USER || '"HireHeaven" <no-reply@hireheaven.com>';
+            if (isResend) {
+                // Resend testing domain - works without domain setup
+                fromAddress = '"HireHeaven" <onboarding@resend.dev>';
+            }
+
             // Add timeout for email sending
             const sendMailWithTimeout = Promise.race([
                 transporter.sendMail({
-                    from: process.env.SMTP_USER || '"HireHeaven" <no-reply@hireheaven.com>',
+                    from: fromAddress,
                     to,
                     subject,
                     html,
