@@ -7,11 +7,12 @@ let admin: Admin;
 export const connectProducer = async () => {
     try {
         // 1. Get Client from Common Config
-        const kafka = getKafkaClient('auth-service');
+        const kafka = getKafkaClient('job-service');
         
         // 2. Setup Topics (Admin)
         admin = kafka.admin();
         await admin.connect();
+        console.log('✅ Kafka admin connected');
         
         const topics = await admin.listTopics();
         if(!topics.includes('send-mail')){
@@ -19,19 +20,31 @@ export const connectProducer = async () => {
                 topics: [{ topic: 'send-mail', numPartitions: 1, replicationFactor: 1 }],
             });
             console.log('✅ Topic send-mail created');
+        } else {
+            console.log('ℹ️ Topic send-mail already exists');
         }
         await admin.disconnect();
 
         // 3. Connect Producer
         producer = kafka.producer({
-            createPartitioner: Partitioners.LegacyPartitioner
+            createPartitioner: Partitioners.LegacyPartitioner,
+            allowAutoTopicCreation: true,
+            transactionTimeout: 30000,
+            retry: {
+                retries: 8
+            }
         });
         await producer.connect();
 
-        console.log('✅ Kafka producer connected');
+        console.log('✅ Kafka producer connected (job-service)');
     }
-    catch(error){
-        console.error('❌ Error connecting Kafka producer:', error);
+    catch(error: any){
+        console.error('❌ Error connecting Kafka producer:', error.message);
+        // Retry after delay
+        setTimeout(() => {
+            console.log('🔄 Retrying Kafka producer connection...');
+            connectProducer();
+        }, 5000);
     }
 };
 

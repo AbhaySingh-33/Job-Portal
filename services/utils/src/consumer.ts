@@ -7,7 +7,14 @@ dotenv.config({ quiet: true });
 export const startSendMailConsumer = async () => {
   try {
     const kafka = getKafkaClient("mail-service");
-    const consumer = kafka.consumer({ groupId: "mail-service-group" });
+    const consumer = kafka.consumer({ 
+      groupId: "mail-service-group",
+      sessionTimeout: 30000,
+      heartbeatInterval: 3000,
+      retry: {
+        retries: 8
+      }
+    });
 
     await consumer.connect();
     console.log("✅ Kafka consumer connected");
