@@ -65,14 +65,11 @@ export const startSendMailConsumer = async () => {
     transporter.verify((error, success) => {
         if (error) {
             console.error('❌ SMTP verification failed:', error.message);
-            console.error('Error code:', error.code);
+            console.error('Error code:', (error as any).code);
             console.log('⚠️ Check your SMTP API key/password!');
             if (isResend) {
                 console.log('💡 Resend API key should start with "re_"');
                 console.log('💡 Get API key from: https://resend.com/api-keys');
-            }
-            if (isResend) {
-                console.log('💡 Resend: Make sure API key is correct (starts with re_)');
             }
             smtpReady = false;
         } else {
