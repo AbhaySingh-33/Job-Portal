@@ -135,7 +135,7 @@ export interface Company {
 }
 
 type ApplicationStatus = 
-'Submitted'| 'Rejected'| 'Hired';
+'Submitted'| 'Under Review'| 'Interview Scheduled'| 'Interview Completed'| 'Rejected'| 'Hired';
 
 export interface Application {
   application_id: number;
@@ -149,4 +149,14 @@ export interface Application {
   job_title: string;
   job_salary: number;
   job_location: string;
+  status_updated_at?: string;
+  notes?: string;
+}
+
+export interface ApplicationStatusHistory {
+  history_id: number;
+  application_id: number;
+  status: ApplicationStatus;
+  changed_at: string;
+  notes?: string;
 }

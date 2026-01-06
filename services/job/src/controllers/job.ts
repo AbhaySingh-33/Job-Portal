@@ -359,6 +359,7 @@ export const updateApplicationStatus = TryCatch(
     }
 
     const {id} = req.params;
+    const { status, notes } = req.body;
 
     const [application] = await sql `SELECT * FROM applications WHERE application_id = ${id};`;
 
@@ -376,10 +377,16 @@ export const updateApplicationStatus = TryCatch(
       throw new ErrorHandler("Forbidden: You are not allowed",403);
     }
 
+    // Update application status
     const [updateApplication] = await sql `
     UPDATE applications 
-    SET status = ${req.body.status} 
+    SET status = ${status}, status_updated_at = NOW()
     WHERE application_id = ${id} RETURNING *;`;
+
+    // Add to status history
+    await sql `
+    INSERT INTO application_status_history (application_id, status, notes)
+    VALUES (${id}, ${status}, ${notes || null})`;
 
     const message = {
       to: application.applicant_email,

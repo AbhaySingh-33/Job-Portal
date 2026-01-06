@@ -337,10 +337,43 @@ export const getAllApplications = TryCatch(
           j.location AS job_location
         FROM applications a
         JOIN jobs j ON a.job_id = j.job_id
-        WHERE a.applicant_id = ${req.user?.user_id};
+        WHERE a.applicant_id = ${req.user?.user_id}
+        ORDER BY a.applied_at DESC;
       `;
 
     res.json(applications);
+  }
+);
+
+export const getApplicationStatusHistory = TryCatch(
+  async (req: AuthenticatedRequest, res) => {
+    const user = req.user;
+    if (!user) {
+      throw new ErrorHandler("Authentication Required", 401);
+    }
+
+    const { applicationId } = req.params;
+
+    // Verify the application belongs to the user
+    const [application] = await sql`
+      SELECT applicant_id FROM applications WHERE application_id = ${applicationId}
+    `;
+
+    if (!application) {
+      throw new ErrorHandler("Application not found", 404);
+    }
+
+    if (application.applicant_id !== user.user_id) {
+      throw new ErrorHandler("Forbidden: You can only view your own applications", 403);
+    }
+
+    const history = await sql`
+      SELECT * FROM application_status_history 
+      WHERE application_id = ${applicationId}
+      ORDER BY changed_at ASC
+    `;
+
+    res.json(history);
   }
 );
  
