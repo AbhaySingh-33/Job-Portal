@@ -388,9 +388,11 @@ export const updateApplicationStatus = TryCatch(
     }
 
     //publish message to kafka topic
-    publishToTopic('send-mail',message).catch((err)=>{
-      console.error("Error publishing to topic:",err);
-    });
+    try {
+      await publishToTopic('send-mail', message);
+    } catch (err: any) {
+      console.error("⚠️ Error publishing application status email to Kafka:", err.message);
+    }
 
     res.json({
       message: "Application status updated successfully",

@@ -51,7 +51,7 @@ export const connectProducer = async () => {
 export const publishToTopic = async (topic: string, message: any) => {
     if(!producer){
         console.error('❌ Producer not connected');
-        return;
+        throw new Error('Kafka producer is not connected');
     }
     try{
         await producer.send({
@@ -60,9 +60,15 @@ export const publishToTopic = async (topic: string, message: any) => {
                 { value: JSON.stringify(message) }
             ],
         });
-    } catch (error) {
-        console.error('❌ Error publishing message:', error);
+        console.log(`✅ Message published to topic '${topic}' for ${message.to}`);
+    } catch (error: any) {
+        console.error(`❌ Error publishing message to topic '${topic}':`, error.message);
+        throw error;
     }
+}
+
+export const isProducerConnected = () => {
+    return producer !== null;
 }
 
 export const disconnectProducer = async () => {

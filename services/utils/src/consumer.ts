@@ -57,8 +57,8 @@ export const startSendMailConsumer = async () => {
                 return;
             }
 
-            console.log('📨 Processing email message...');
             const { to, subject, html } = JSON.parse(payload);
+            console.log(`📨 Processing email message for ${to} with subject: "${subject}"`);
 
             const info = await transporter.sendMail({
                 from: process.env.SMTP_USER || '"HireHeaven" <no-reply@hireheaven.com>',
@@ -66,13 +66,16 @@ export const startSendMailConsumer = async () => {
                 subject,
                 html,
             });
-            console.log(`✅ Email sent successfully to ${to}. MessageId: ${info.messageId}`);
+            console.log(`✅ Email sent successfully to ${to}`);
+            console.log(`   MessageId: ${info.messageId}`);
+            console.log(`   Response: ${info.response}`);
         } catch (error: any) {
             console.error("❌ Failed to send mail:", error.message);
             console.error("Details:", {
                 code: error.code,
                 command: error.command,
-                responseCode: error.responseCode
+                responseCode: error.responseCode,
+                response: error.response
             });
         }
       },

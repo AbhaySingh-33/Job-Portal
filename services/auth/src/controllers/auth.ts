@@ -76,7 +76,13 @@ export const registerUser = TryCatch(
     };
 
     //publish message to kafka topic
-    publishToTopic("send-mail", message);
+    try {
+      await publishToTopic("send-mail", message);
+    } catch (error: any) {
+      console.error('⚠️ Failed to queue verification email, will retry...', error.message);
+      // Store email data in Redis for retry mechanism
+      await redisClient.set(`pending-email:${email}`, JSON.stringify(message), { ex: 3600 });
+    }
     
     await redisClient.set(rateLimitKey, "1", { ex: 60 }); // 1 minute rate limit
 
@@ -203,7 +209,13 @@ export const loginUser = TryCatch(
       html: getOtpHtml(otp),
     };
 
-    publishToTopic("send-mail", message);
+    try {
+      await publishToTopic("send-mail", message);
+    } catch (error: any) {
+      console.error('⚠️ Failed to queue OTP email, will retry...', error.message);
+      // Store email data in Redis for retry mechanism
+      await redisClient.set(`pending-email:${email}`, JSON.stringify(message), { ex: 300 });
+    }
 
     res.json({
       message: "OTP sent to your email. Please verify to complete login.",
@@ -329,7 +341,14 @@ export const forgotPassword = TryCatch(async (req, res, next) => {
   await redisClient.set(`forget :${email}`, resetToken, { ex: 900 }); // 15 minutes expiration
 
   //publish message to kafka topic
-      publishToTopic("send-mail", message);
+  try {
+    await publishToTopic("send-mail", message);
+  } catch (error: any) {
+    console.error('⚠️ Failed to queue reset password email, will retry...', error.message);
+    // Store email data in Redis for retry mechanism
+    await redisClient.set(`pending-email:${email}`, JSON.stringify(message), { ex: 900 });
+  }
+  
   res.json({
     message: "If that email exists, we have sent a reset link",
   });
