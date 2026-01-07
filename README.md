@@ -2,9 +2,6 @@
 
 A modern, full-stack job portal application built with microservices architecture, featuring AI-powered job recommendations, real-time application tracking, and integrated payment systems.
 
-## 🌐 Live Demo
-
-**Website:** [https://job-portal-weld-ten.vercel.app](https://job-portal-weld-ten.vercel.app)
 
 ## ✨ Features
 
@@ -333,7 +330,7 @@ This project is open source and available under the MIT License.
 
 ## 📞 Support
 
-For support, email your-email@example.com or open an issue in the repository.
+For support, email abhaysingh957152@gmail.com or open an issue in the repository.
 
 ---
 
