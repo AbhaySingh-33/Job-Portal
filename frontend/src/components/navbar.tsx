@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "./ui/button";
-import { Briefcase, Home, Info, LogOut, Menu, User, X } from "lucide-react";
+import { Briefcase, Home, Info, LogOut, Menu, User, X, MessageSquare } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { ModeToggle } from "./mode-toggle";
@@ -77,6 +77,21 @@ const NavBar = () => {
                 <Info size={16} /> About
               </Button>
             </Link>
+
+            {isAuth && (
+              <Link href={"/interview"}>
+                <Button
+                  variant={"ghost"}
+                  className={`flex items-center gap-2 font-medium transition-all duration-200 rounded-xl px-4 ${
+                    pathname.startsWith("/interview") 
+                      ? "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 shadow-sm" 
+                      : "hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:text-orange-600 dark:hover:text-orange-400"
+                  }`}
+                >
+                  <MessageSquare size={16} /> Interview
+                </Button>
+              </Link>
+            )}
           </div>
 
           {/* Right side Actions */}
@@ -198,6 +213,21 @@ const NavBar = () => {
               <Info size={18} /> About
             </Button>
           </Link>
+
+          {isAuth && (
+            <Link href={"/interview"} onClick={toggleMenu}>
+              <Button
+                variant={"ghost"}
+                className={`w-full justify-start gap-3 h-12 font-medium rounded-xl ${
+                  pathname.startsWith("/interview") 
+                    ? "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400" 
+                    : "hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:text-orange-600 dark:hover:text-orange-400"
+                }`}
+              >
+                <MessageSquare size={18} /> Interview
+              </Button>
+            </Link>
+          )}
 
           <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
             {isAuth ? (

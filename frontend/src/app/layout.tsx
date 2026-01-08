@@ -4,6 +4,7 @@ import "./globals.css";
 import NavBar from "@/components/navbar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppProvider } from "@/context/AppContext";
+import { Toaster } from "react-hot-toast";
 
 export const metadata: Metadata = {
   title: "Hire Heaven",
@@ -28,6 +29,7 @@ export default function RootLayout({
           >
             <NavBar />
             {children}
+            <Toaster position="top-right" />
           </ThemeProvider>
         </AppProvider>
       </body>
