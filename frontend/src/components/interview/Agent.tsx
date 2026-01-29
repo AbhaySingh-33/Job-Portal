@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Vapi from "@vapi-ai/web";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +27,8 @@ export default function Agent({ interviewId, questions, jobRole, experienceLevel
   const [currentTurn, setCurrentTurn] = useState(0);
   const [lastTranscript, setLastTranscript] = useState("");
   const [questionsAsked, setQuestionsAsked] = useState(0);
+  const [isGeneratingFeedback, setIsGeneratingFeedback] = useState(false);
+  const transcriptRef = useRef("");
   const router = useRouter();
 
   // Check microphone permission on mount
@@ -60,24 +62,30 @@ export default function Agent({ interviewId, questions, jobRole, experienceLevel
     });
 
     vapiInstance.on("call-end", async () => {
-      console.log("Call ended");
+      console.log("🔚 Call ended");
       setIsCallActive(false);
       
-      // Use a small delay to ensure all final transcripts are captured
+      // Use a longer delay to ensure all final transcripts are captured
       setTimeout(async () => {
-        const finalTranscript = transcript;
-        console.log("Final transcript length:", finalTranscript.length);
+        // Use the ref which always has the latest transcript value
+        const finalTranscript = transcriptRef.current;
+        console.log("📝 Final transcript length:", finalTranscript.length);
+        console.log("📝 Final transcript preview:", finalTranscript.substring(0, 200));
+        console.log("📝 Full transcript:", finalTranscript);
         
-        // Check if we have any transcript before showing completion
-        if (finalTranscript.trim()) {
+        // Always try to generate feedback, even with short transcripts
+        if (finalTranscript.trim().length > 10) {
+          console.log("✅ Generating feedback with transcript...");
           toast.success("Interview completed! Generating feedback...");
+          setIsGeneratingFeedback(true);
           await handleGenerateFeedback(finalTranscript);
         } else {
-          toast.error("No responses recorded. Please check your microphone.");
-          // Still route to feedback page even without transcript
-          router.push(`/interview/${interviewId}/feedback`);
+          console.warn("⚠️ No transcript captured - length:", finalTranscript.length);
+          toast.error("No responses recorded. Please check your microphone and try again.");
+          setIsLoading(false);
+          setIsGeneratingFeedback(false);
         }
-      }, 500);
+      }, 1500);
     });
 
     vapiInstance.on("error", (error) => {
@@ -114,9 +122,14 @@ export default function Agent({ interviewId, questions, jobRole, experienceLevel
       if (message.type === "transcript" && message.transcriptType === "final" && message.role === "user") {
         const userText = message.transcript || "";
         if (userText.trim()) {
-          setTranscript(prev => prev + " " + userText);
+          setTranscript(prev => {
+            const newTranscript = prev + " " + userText;
+            transcriptRef.current = newTranscript;
+            return newTranscript;
+          });
           setLastTranscript(userText);
           console.log("✅ USER SAID:", userText);
+          console.log("📊 Total transcript length now:", transcriptRef.current.length);
         } else {
           console.warn("⚠️ Empty transcript received");
         }
@@ -180,24 +193,61 @@ export default function Agent({ interviewId, questions, jobRole, experienceLevel
       setIsLoading(true);
       const token = Cookies.get("token");
       
-      await axios.post(
+      console.log("📤 Sending feedback request...");
+      console.log("   Interview ID:", interviewId);
+      console.log("   Transcript length:", finalTranscript.length);
+      console.log("   Transcript sample:", finalTranscript.substring(0, 100));
+      console.log("   API URL:", `${process.env.NEXT_PUBLIC_API_URL}/interview/feedback`);
+      
+      const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/interview/feedback`,
         {
           interviewId: parseInt(interviewId),
           transcript: finalTranscript
         },
         {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 30000 // 30 second timeout
         }
       );
       
-      toast.success("Feedback generated successfully!");
-      router.push(`/interview/${interviewId}/feedback`);
+      console.log("✅ Feedback response received:", response.data);
+      
+      if (response.data.success) {
+        toast.success("Feedback generated successfully!");
+        console.log("🎯 Navigating to feedback page...");
+        // Wait a bit to ensure data is persisted
+        setTimeout(() => {
+          router.push(`/interview/${interviewId}/feedback`);
+        }, 500);
+      } else {
+        throw new Error("Feedback generation failed");
+      }
     } catch (error) {
-      console.error("Error generating feedback:", error);
-      toast.error("Failed to generate feedback");
+      console.error("❌ Error generating feedback:", error);
+      if (axios.isAxiosError(error)) {
+        console.error("   Response data:", error.response?.data);
+        console.error("   Response status:", error.response?.status);
+        console.error("   Request data:", error.config?.data);
+      }
+      toast.error("Failed to generate feedback. Please try the Retry button on the feedback page.");
+      // Navigate anyway so user can use the retry button
+      setTimeout(() => {
+        router.push(`/interview/${interviewId}/feedback`);
+      }, 1000);
     } finally {
       setIsLoading(false);
+      setIsGeneratingFeedback(false);
+    }
+  };
+
+  const manualGenerateFeedback = async () => {
+    const finalTranscript = transcriptRef.current;
+    if (finalTranscript.trim().length > 10) {
+      toast.loading("Generating feedback...");
+      await handleGenerateFeedback(finalTranscript);
+    } else {
+      toast.error("No transcript available. Please complete the interview first.");
     }
   };
 
@@ -212,22 +262,21 @@ export default function Agent({ interviewId, questions, jobRole, experienceLevel
       
       // Calculate question count based on experience level
       const getQuestionLimit = (level: string) => {
-        switch (level.toLowerCase()) {
-          case 'entry-level':
-          case 'junior':
-            return 5;
-          case 'mid-level':
-          case 'intermediate':
-            return 8;
-          case 'senior':
-          case 'expert':
-            return 10;
-          default:
-            return 7;
+        const normalizedLevel = level.toLowerCase().trim();
+        
+        if (normalizedLevel.includes('entry') || normalizedLevel.includes('junior') || normalizedLevel === 'fresher') {
+          return 2; // Entry-level: 2 questions
+        } else if (normalizedLevel.includes('mid') || normalizedLevel.includes('intermediate')) {
+          return 7; // Mid-level: 7 questions
+        } else if (normalizedLevel.includes('senior') || normalizedLevel.includes('expert') || normalizedLevel.includes('lead')) {
+          return 10; // Senior: 10 questions
         }
+        
+        return 7; // Default: 7 questions
       };
       
       const questionLimit = getQuestionLimit(experienceLevel);
+      console.log(`📊 Interview configured for ${experienceLevel} level: ${questionLimit} questions`);
       
       // Simplified assistant configuration with core settings only
       const assistant = {
@@ -239,17 +288,18 @@ export default function Agent({ interviewId, questions, jobRole, experienceLevel
               role: "system" as const,
               content: `You are an AI interviewer conducting a ${jobRole} interview for a ${experienceLevel} position. 
 
-IMPORTANT INSTRUCTIONS:
-- Ask ONLY ${questionLimit} questions total during this interview
+CRITICAL INSTRUCTIONS:
+- Ask EXACTLY ${questionLimit} questions - NO MORE, NO LESS
+- Count each question carefully (Question 1 of ${questionLimit}, Question 2 of ${questionLimit}, etc.)
 - Ask questions one at a time and wait for complete responses
-- Keep track of how many questions you've asked
-- After ${questionLimit} questions, thank the candidate and say "That concludes our interview. Thank you for your time!"
+- After receiving the answer to question ${questionLimit}, you MUST say: "That concludes our interview. Thank you for your time. Goodbye!"
+- DO NOT ask any follow-up questions after reaching ${questionLimit} questions
 - Be conversational, professional, and encouraging
 - Provide brief acknowledgments between questions
 
-Questions to cover: ${questions.join(", ")}
+Questions to cover: ${questions.slice(0, questionLimit).join(", ")}
 
-Remember: Stop after ${questionLimit} questions and end the interview gracefully.`
+STRICT RULE: After ${questionLimit} questions, immediately conclude and say goodbye to trigger call end.`
             }
           ],
           temperature: 0.7,
@@ -263,15 +313,16 @@ Remember: Stop after ${questionLimit} questions and end the interview gracefully
           model: "nova-2" as const,
           language: "en" as const,
         },
-        firstMessage: `Hello! I'm conducting an interview for the ${jobRole} position. I'm excited to learn more about you. Let's start with our first question: Can you tell me about yourself and your background?`,
+        firstMessage: `Hello! I'm conducting an interview for the ${jobRole} position at the ${experienceLevel} level. I'll be asking you ${questionLimit} questions today. Let's begin! Can you tell me about yourself and your background?`,
         endCallMessage: "Thank you for your time today. Your interview has been recorded and you'll receive feedback shortly. Good luck!",
-        endCallPhrases: ["goodbye", "thank you goodbye", "end interview"],
+        endCallPhrases: ["goodbye", "thank you for your time goodbye", "that concludes our interview"],
+        endCallFunctionEnabled: true,
         recordingEnabled: true,
         silenceTimeoutSeconds: 30,
         responseDelaySeconds: 1,
         maxDurationSeconds: 1800,
         backgroundSound: "off" as const,
-        clientMessages: ["transcript", "speech-update", "status-update"],
+        clientMessages: ["transcript", "speech-update", "status-update", "function-call"],
       } as any;
       
       console.log("Starting call with assistant:", assistant);
@@ -368,9 +419,14 @@ Remember: Stop after ${questionLimit} questions and end the interview gracefully
               onClick={startCall}
               size="lg"
               className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
-              disabled={isLoading || micPermission === false}
+              disabled={isLoading || micPermission === false || isGeneratingFeedback}
             >
-              {isLoading ? (
+              {isGeneratingFeedback ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                  Generating Feedback...
+                </>
+              ) : isLoading ? (
                 <>
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
                   Connecting...
@@ -428,9 +484,10 @@ Remember: Stop after ${questionLimit} questions and end the interview gracefully
                 size="lg"
                 variant="destructive"
                 className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+                disabled={isGeneratingFeedback}
               >
                 <PhoneOff className="mr-3 h-5 w-5" />
-                End Interview
+                {isGeneratingFeedback ? "Processing..." : "End Interview"}
               </Button>
             </div>
           )}

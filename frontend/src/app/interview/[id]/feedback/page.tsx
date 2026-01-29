@@ -29,18 +29,33 @@ interface Interview {
   rating: number;
   feedback_json: Feedback;
   created_at: string;
+  transcript?: string;
 }
 
 export default function FeedbackPage() {
   const params = useParams();
   const [interview, setInterview] = useState<Interview | null>(null);
   const [loading, setLoading] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (params.id) {
       fetchInterview();
     }
   }, [params.id]);
+
+  // Poll for feedback if not available yet
+  useEffect(() => {
+    if (interview && !interview.feedback_json && retryCount < 10) {
+      const timer = setTimeout(() => {
+        console.log("Retrying to fetch feedback... attempt", retryCount + 1);
+        fetchInterview();
+        setRetryCount(prev => prev + 1);
+      }, 2000); // Retry every 2 seconds
+      
+      return () => clearTimeout(timer);
+    }
+  }, [interview, retryCount]);
 
   const fetchInterview = async () => {
     try {
@@ -53,11 +68,52 @@ export default function FeedbackPage() {
       );
       
       if (response.data.success) {
-        setInterview(response.data.data);
+        const interviewData = response.data.data;
+        console.log("Interview data received:", interviewData);
+        console.log("Feedback available:", !!interviewData.feedback_json);
+        console.log("Transcript available:", !!interviewData.transcript);
+        console.log("Transcript length:", interviewData.transcript?.length || 0);
+        setInterview(interviewData);
       }
     } catch (error) {
       console.error("Error fetching interview:", error);
       toast.error("Failed to fetch interview feedback");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const manualGenerateFeedback = async () => {
+    if (!interview) return;
+    
+    try {
+      setLoading(true);
+      const token = Cookies.get("token");
+      
+      console.log("🔄 Manually generating feedback...");
+      
+      // Use transcript from interview or provide a fallback
+      const transcript = interview.transcript || "Interview completed but no transcript was recorded.";
+      
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/interview/feedback`,
+        {
+          interviewId: parseInt(params.id as string),
+          transcript: transcript
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      if (response.data.success) {
+        toast.success("Feedback generated!");
+        setRetryCount(0);
+        fetchInterview();
+      }
+    } catch (error) {
+      console.error("Error generating feedback:", error);
+      toast.error("Failed to generate feedback");
     } finally {
       setLoading(false);
     }
@@ -88,15 +144,35 @@ export default function FeedbackPage() {
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center space-y-4">
-              <div className="text-6xl mb-4">📋</div>
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Feedback Not Available</h2>
-              <p className="text-gray-600 dark:text-gray-400">The feedback for this interview is not ready yet or doesn't exist.</p>
-              <Link href="/interview">
-                <Button className="mt-4">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Interviews
-                </Button>
-              </Link>
+              {retryCount < 10 ? (
+                <>
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                  <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Generating Feedback</h2>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Please wait while we analyze your interview responses...
+                  </p>
+                  <p className="text-sm text-gray-500">Attempt {retryCount + 1} of 10</p>
+                </>
+              ) : (
+                <>
+                  <div className="text-6xl mb-4">📋</div>
+                  <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Feedback Not Available</h2>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    The feedback for this interview is taking longer than expected.
+                  </p>
+                  <div className="flex gap-2 justify-center">
+                    <Button onClick={manualGenerateFeedback} disabled={loading}>
+                      {loading ? "Generating..." : "Generate Feedback"}
+                    </Button>
+                    <Link href="/interview">
+                      <Button variant="outline" className="mt-0">
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to Interviews
+                      </Button>
+                    </Link>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
