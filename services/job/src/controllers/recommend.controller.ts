@@ -159,3 +159,26 @@ export const syncJobsToML = async () => {
     console.error("Failed to sync jobs to ML service:", error.message);
   }
 };
+
+// Add a single job to ML service (Call this after creating a job)
+export const addJobToML = async (jobId: number) => {
+  try {
+    const [job] = await sql`
+      SELECT 
+        j.job_id,
+        j.title,
+        j.description,
+        j.role,
+        STRING_TO_ARRAY(j.description, ' ') AS required_skills
+      FROM jobs j
+      WHERE j.job_id = ${jobId}
+    `;
+
+    if (job && PREFERRED_ML_URL) {
+      await axios.post(`${PREFERRED_ML_URL}/add-job`, job);
+      console.log(`Synced job ${jobId} to ML service`);
+    }
+  } catch (error: any) {
+    console.error("Failed to sync job to ML service:", error.message);
+  }
+};
