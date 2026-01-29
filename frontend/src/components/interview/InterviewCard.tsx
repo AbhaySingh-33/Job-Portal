@@ -3,8 +3,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Star, Briefcase, Code, ArrowRight, FileText } from "lucide-react";
+import { Calendar, Star, Briefcase, Code, ArrowRight, FileText, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
+import { toast } from "react-hot-toast";
+import axios from "axios";
+import Cookies from "js-cookie";
 
 interface Interview {
   id: number;
@@ -18,11 +22,35 @@ interface Interview {
 
 interface InterviewCardProps {
   interview: Interview;
+  onDelete?: (id: number) => void;
 }
 
-export default function InterviewCard({ interview }: InterviewCardProps) {
+export default function InterviewCard({ interview, onDelete }: InterviewCardProps) {
+  const [deleting, setDeleting] = useState(false);
+  
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
+  };
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this interview?')) return;
+    
+    try {
+      setDeleting(true);
+      const token = Cookies.get("token");
+      
+      await axios.delete(
+        `${process.env.NEXT_PUBLIC_API_URL}/interview/${interview.id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      toast.success("Interview deleted successfully");
+      onDelete?.(interview.id);
+    } catch (error) {
+      toast.error("Failed to delete interview");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -109,6 +137,15 @@ export default function InterviewCard({ interview }: InterviewCardProps) {
               </Button>
             </Link>
           )}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleDelete}
+            disabled={deleting}
+            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-300 transition-colors"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       </CardContent>
     </Card>

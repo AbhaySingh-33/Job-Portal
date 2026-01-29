@@ -202,20 +202,57 @@ export const generateFeedback = async (
             RETURNING *
         `;
 
-        console.log("✅ Feedback saved successfully for interview:", interviewId);
+        console.log("✅ Feedback saved successfully for interview:", updatedInterview[0].id);
 
-        res.json({
+        res.status(200).json({
             success: true,
-            data: updatedInterview[0]
+            data: {
+                interview: updatedInterview[0],
+                feedback
+            }
         });
     } catch (error) {
         console.error("❌ Error generating feedback:", error);
-        if (error instanceof Error) {
-            console.error("Error message:", error.message);
-            console.error("Error stack:", error.stack);
-        }
         res.status(500).json({ 
             message: "Failed to generate feedback",
+            error: error instanceof Error ? error.message : "Unknown error"
+        });
+    }
+};
+
+export const deleteInterview = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const userId = req.user?.user_id;
+
+        if (!userId) {
+            res.status(401).json({ message: "User not authenticated" });
+            return;
+        }
+
+        const deletedInterview = await sql`
+            DELETE FROM interviews 
+            WHERE id = ${id} AND user_id = ${userId}
+            RETURNING id
+        `;
+
+        if (deletedInterview.length === 0) {
+            res.status(404).json({ message: "Interview not found" });
+            return;
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Interview deleted successfully"
+        });
+    } catch (error) {
+        console.error("Error deleting interview:", error);
+        res.status(500).json({ 
+            message: "Failed to delete interview",
             error: error instanceof Error ? error.message : "Unknown error"
         });
     }

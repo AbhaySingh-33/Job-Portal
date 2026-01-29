@@ -4,7 +4,8 @@ import {
     generateQuestions,
     generateFeedback,
     getUserInterviews,
-    getInterviewById
+    getInterviewById,
+    deleteInterview
 } from "../controllers/interview.js";
 
 const router = express.Router();
@@ -29,5 +30,6 @@ router.post("/generate", isAuth, generateQuestions);
 router.post("/feedback", isAuth, generateFeedback);
 router.get("/my-interviews", isAuth, getUserInterviews);
 router.get("/:id", isAuth, getInterviewById);
+router.delete("/:id", isAuth, deleteInterview);
 
 export default router;

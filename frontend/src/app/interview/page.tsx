@@ -55,6 +55,10 @@ export default function InterviewPage() {
     }
   };
 
+  const handleDeleteInterview = (deletedId: number) => {
+    setInterviews(prev => prev.filter(interview => interview.id !== deletedId));
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
@@ -187,7 +191,11 @@ export default function InterviewPage() {
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {interviews.map((interview) => (
-                <InterviewCard key={interview.id} interview={interview} />
+                <InterviewCard 
+                  key={interview.id} 
+                  interview={interview} 
+                  onDelete={handleDeleteInterview}
+                />
               ))}
             </div>
           )}
