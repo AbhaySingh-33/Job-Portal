@@ -120,7 +120,7 @@ export const generateFeedback = async (
         
         // Try to generate feedback with Gemini, with fallback
         try {
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
             const prompt = `Analyze this interview transcript and provide feedback in JSON format:
             
             Interview Role: ${interview[0].job_role}
