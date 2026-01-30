@@ -26,3 +26,9 @@ build-images.sh
 DOCKER_DEPLOYMENT.md
 push-images.ps1
 push-images.sh
+
+# Kubernetes Deployment files
+deploy-k8s.ps1
+rebuild-frontend.ps1
+k8s/manifests/02-secrets.yaml
+*secrets.yaml

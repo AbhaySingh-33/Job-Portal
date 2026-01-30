@@ -378,6 +378,47 @@ Deploy the FastAPI service on:
 - Render
 - Google Cloud Run
 
+## 🚢 Docker & Kubernetes Deployment
+
+This project supports full local deployment using Docker and Kubernetes (Minikube).
+
+### Prerequisites
+1.  **Docker Desktop** (Installed & Running)
+2.  **Minikube** (Installed & Running)
+3.  **Kubectl** (Installed & Configured)
+
+### Quick Start Guide
+
+**1. Deployment**
+Run the automated deployment script to setup everything in your local cluster:
+```powershell
+.\deploy-k8s.ps1
+```
+*   Sets up Namespace `job-portal`
+*   Creates ConfigMaps & Secrets
+*   Deploys 7 Backend Microservices + 1 Frontend Service
+*   Configures Ingress Routing
+
+**2. Accessing the App**
+Open a **new terminal as Administrator** and run the tunnel to expose the Ingress:
+```powershell
+minikube tunnel
+```
+The application will be available at: **[http://localhost/](http://localhost/)**
+
+**3. Frontend Updates**
+If you modify frontend code or environment variables, rebuild the image correctly using the helper script:
+```powershell
+.\rebuild-frontend.ps1
+```
+*(This ensures build-time environment variables are correctly injected into the Docker image)*
+
+**4. Documentation**
+For a detailed log of the deployment process, troubleshooting steps, and architectural decisions, refer to:
+📄 **[KUBERNETES_DEPLOYMENT_JOURNEY.md](KUBERNETES_DEPLOYMENT_JOURNEY.md)**
+
+---
+
 ## 🤝 Contributing
 
 1. Fork the repository
