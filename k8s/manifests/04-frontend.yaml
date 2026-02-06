@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: abhay33/job-portal-frontend:03
+        image: abhay33/job-portal-frontend:05
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3000

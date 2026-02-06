@@ -92,26 +92,26 @@ export default function InterviewPage() {
           
           {/* Stats Cards */}
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-8">
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg">
-              <div className="flex items-center justify-center w-12 h-12 bg-blue-100 text-blue-600 rounded-lg mx-auto mb-3">
+            <div className="bg-white dark:bg-gray-800 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-center w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg mx-auto mb-3">
                 <Target className="h-6 w-6" />
               </div>
               <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Targeted Practice</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300">Role-specific questions tailored to your experience level</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Role-specific questions tailored to your experience level</p>
             </div>
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg">
-              <div className="flex items-center justify-center w-12 h-12 bg-purple-100 text-purple-600 rounded-lg mx-auto mb-3">
+            <div className="bg-white dark:bg-gray-800 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-center w-12 h-12 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg mx-auto mb-3">
                 <Brain className="h-6 w-6" />
               </div>
               <h3 className="font-semibold text-gray-900 dark:text-white mb-1">AI-Powered</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300">Advanced AI conducts realistic interview sessions</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Advanced AI conducts realistic interview sessions</p>
             </div>
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg">
-              <div className="flex items-center justify-center w-12 h-12 bg-green-100 text-green-600 rounded-lg mx-auto mb-3">
+            <div className="bg-white dark:bg-gray-800 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-center w-12 h-12 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg mx-auto mb-3">
                 <Zap className="h-6 w-6" />
               </div>
               <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Instant Feedback</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300">Detailed analysis and improvement suggestions</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Detailed analysis and improvement suggestions</p>
             </div>
           </div>
           
@@ -153,7 +153,7 @@ export default function InterviewPage() {
           </div>
 
           {interviews.length === 0 ? (
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+            <Card className="shadow-xl bg-white dark:bg-gray-800 backdrop-blur-sm border border-gray-200 dark:border-gray-700">
               <CardHeader className="text-center pb-4">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 text-gray-400 rounded-full mb-4 mx-auto">
                   <Brain className="h-8 w-8" />

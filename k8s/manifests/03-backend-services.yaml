@@ -225,7 +225,8 @@ spec:
     spec:
       containers:
       - name: interview-service
-        image: abhay33/job-portal-interview:01
+        image: abhay33/job-portal-interview:02
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5005
         envFrom:

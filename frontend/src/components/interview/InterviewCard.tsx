@@ -54,7 +54,7 @@ export default function InterviewCard({ interview, onDelete }: InterviewCardProp
   };
 
   return (
-    <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-white/80 backdrop-blur-sm hover:bg-white/90 hover:-translate-y-1">
+    <Card className="group hover:shadow-xl transition-all duration-300 bg-white dark:bg-gray-800 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-750 hover:-translate-y-1 border border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-4">
         <div className="flex justify-between items-start mb-3">
           <div className="flex items-center gap-3">
@@ -62,13 +62,13 @@ export default function InterviewCard({ interview, onDelete }: InterviewCardProp
               <Briefcase className="h-6 w-6" />
             </div>
             <div>
-              <CardTitle className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 transition-colors">
+              <CardTitle className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                 {interview.job_role}
               </CardTitle>
               <div className="flex items-center gap-2 mt-1">
                 <Badge 
                   variant="outline" 
-                  className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 transition-colors"
+                  className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
                 >
                   {interview.experience_level} Level
                 </Badge>
@@ -76,9 +76,9 @@ export default function InterviewCard({ interview, onDelete }: InterviewCardProp
             </div>
           </div>
           {interview.rating && (
-            <div className="flex items-center gap-1 bg-yellow-50 px-3 py-1 rounded-full">
+            <div className="flex items-center gap-1 bg-yellow-50 dark:bg-yellow-900/30 px-3 py-1 rounded-full">
               <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-              <span className="text-sm font-semibold text-yellow-700">{interview.rating}/100</span>
+              <span className="text-sm font-semibold text-yellow-700 dark:text-yellow-300">{interview.rating}/100</span>
             </div>
           )}
         </div>
@@ -87,7 +87,7 @@ export default function InterviewCard({ interview, onDelete }: InterviewCardProp
         {/* Tech Stack */}
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <Code className="h-4 w-4 text-purple-600" />
+            <Code className="h-4 w-4 text-purple-600 dark:text-purple-400" />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Tech Stack</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -95,13 +95,13 @@ export default function InterviewCard({ interview, onDelete }: InterviewCardProp
               <Badge 
                 key={index} 
                 variant="secondary" 
-                className="text-xs bg-purple-100 text-purple-800 hover:bg-purple-200 transition-colors"
+                className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
               >
                 {tech}
               </Badge>
             ))}
             {interview.tech_stack?.length > 4 && (
-              <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-600">
+              <Badge variant="secondary" className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                 +{interview.tech_stack.length - 4} more
               </Badge>
             )}
