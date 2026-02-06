@@ -3,7 +3,14 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { sql } from "../utils/db.js";
 import { AuthenticatedRequest } from "../middleware/auth.js";
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || "");
+// Helper to get initialized GenAI instance
+const getGenAI = () => {
+    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    if (!apiKey) {
+        console.error("⚠️ GOOGLE_GENERATIVE_AI_API_KEY is missing/empty in process.env");
+    }
+    return new GoogleGenerativeAI(apiKey || "");
+};
 
 // Helper function to determine question count based on experience level
 const getQuestionCountByLevel = (level: string): number => {
@@ -45,22 +52,75 @@ export const generateQuestions = async (
         // Determine question count based on level (can be overridden by request)
         const finalQuestionCount = questionCount || getQuestionCountByLevel(level);
         console.log(`Generating ${finalQuestionCount} questions for ${level} level...`);
-        
-        // Temporary fallback questions instead of Gemini
-        const questionPool = [
-            `What is your experience with ${techStack[0]}?`,
-            `How would you approach a ${role} project using ${techStack.join(" and ")}?`,
-            `Explain a challenging problem you solved in your ${level} level experience.`,
-            `What are the best practices for ${techStack.join(", ")} development?`,
-            `How do you stay updated with ${techStack.join(", ")} technologies?`,
-            `Describe your debugging process when working with ${techStack[0]}.`,
-            `What would you do if you encountered performance issues in a ${role} application?`,
-            `Tell me about a time you had to work under tight deadlines.`,
-            `How do you handle code reviews and feedback?`,
-            `What's your approach to testing and quality assurance?`
-        ];
-        
-        const questions = questionPool.slice(0, finalQuestionCount);
+
+        let questions: string[] = [];
+
+        try {
+            // Attempt to generate questions using Gemini
+            const genAI = getGenAI();
+            
+            // Use specific configuration to enforce JSON
+            const model = genAI.getGenerativeModel({ 
+                model: "gemini-flash-latest",
+                generationConfig: { responseMimeType: "application/json" }
+            });
+            
+            const prompt = `Generate ${finalQuestionCount} technical interview questions for a ${level} level ${role} role. 
+            Tech Stack: ${techStack.join(", ")}.
+            
+            Return a JSON array of strings.`;
+
+            console.log("Sending question generation prompt to Gemini...");
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            let text = response.text();
+            
+            console.log("🤖 Gemini Question Response:", text.substring(0, 100) + "...");
+            
+            // Clean up potentially wrapped JSON (even with mimeType, sometimes it wraps)
+            text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+
+            try {
+                questions = JSON.parse(text);
+                
+                if (!Array.isArray(questions)) {
+                    // Sometimes it returns { "questions": [...] } structure if confusing
+                    if (questions['questions'] && Array.isArray(questions['questions'])) {
+                        questions = questions['questions'];
+                    } else {
+                        throw new Error("AI response is not an array");
+                    }
+                }
+                
+                // Sanitize and limit count
+                questions = questions.map((q: any) => String(q)).slice(0, finalQuestionCount);
+                
+                if (questions.length === 0) throw new Error("Empty question list from AI");
+
+            } catch (parseError) {
+                console.warn("Failed to parse AI response for questions. Raw Text:", text);
+                throw parseError; // trigger fallback
+            }
+
+        } catch (aiError) {
+            console.error("❌ AI question generation failed, using fallback pool:", aiError instanceof Error ? aiError.message : aiError);
+            
+            // Fallback to static pool if AI fails
+            const questionPool = [
+                `What is your experience with ${techStack[0]}?`,
+                `How would you approach a ${role} project using ${techStack.join(" and ")}?`,
+                `Explain a challenging problem you solved in your ${level} level experience.`,
+                `What are the best practices for ${techStack.join(", ")} development?`,
+                `How do you stay updated with ${techStack.join(", ")} technologies?`,
+                `Describe your debugging process when working with ${techStack[0]}.`,
+                `What would you do if you encountered performance issues in a ${role} application?`,
+                `Tell me about a time you had to work under tight deadlines.`,
+                `How do you handle code reviews and feedback?`,
+                `What's your approach to testing and quality assurance?`
+            ];
+            
+            questions = questionPool.slice(0, finalQuestionCount);
+        }
 
         console.log("Saving to database...");
         const newInterview = await sql`
@@ -120,7 +180,8 @@ export const generateFeedback = async (
         
         // Try to generate feedback with Gemini, with fallback
         try {
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+            const genAI = getGenAI();
+            const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
             const prompt = `Analyze this interview transcript and provide feedback in JSON format:
             
             Interview Role: ${interview[0].job_role}

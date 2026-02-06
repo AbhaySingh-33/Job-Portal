@@ -265,7 +265,7 @@ export default function Agent({ interviewId, questions, jobRole, experienceLevel
         const normalizedLevel = level.toLowerCase().trim();
         
         if (normalizedLevel.includes('entry') || normalizedLevel.includes('junior') || normalizedLevel === 'fresher') {
-          return 2; // Entry-level: 2 questions
+          return 5; // Entry-level: 5 questions
         } else if (normalizedLevel.includes('mid') || normalizedLevel.includes('intermediate')) {
           return 7; // Mid-level: 7 questions
         } else if (normalizedLevel.includes('senior') || normalizedLevel.includes('expert') || normalizedLevel.includes('lead')) {
@@ -466,8 +466,9 @@ STRICT RULE: After ${questionLimit} questions, immediately conclude and say good
                     <div className="text-xs opacity-90 mt-1">
                       Questions: {questionsAsked} / {(() => {
                         const level = experienceLevel.toLowerCase();
-                        return level.includes('junior') || level.includes('entry') ? 5 : 
-                               level.includes('senior') || level.includes('expert') ? 10 : 8;
+                        if (level.includes('entry') || level.includes('junior') || level.includes('fresher')) return 5;
+                        if (level.includes('senior') || level.includes('expert') || level.includes('lead')) return 10;
+                        return 7;
                       })()}
                     </div>
                   )}

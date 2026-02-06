@@ -199,6 +199,7 @@ export default function InterviewDetailPage() {
               interviewId={params.id as string}
               questions={interview.questions || []}
               jobRole={interview.job_role}
+              experienceLevel={interview.experience_level}
             />
           </div>
         </div>
