@@ -45,6 +45,8 @@ export const isAuth = async (
       token,
       process.env.JWT_SECRET as string
     ) as jwt.JwtPayload;
+    
+    console.log("[USER-DEBUG] Decoded payload:", decodedPayload);
 
     if(!decodedPayload || !decodedPayload.id){
         res.status(401).json({

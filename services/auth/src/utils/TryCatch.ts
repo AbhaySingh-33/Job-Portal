@@ -14,7 +14,7 @@ export const TryCatch =
                 message: error.message,
             })
         }
-      res.status(500).json({
+      return res.status(500).json({
         message: error.message,
       });
     }

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+spec:
+  type: ExternalName
+  externalName: postgres-postgresql.default.svc.cluster.local
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+spec:
+  type: ExternalName
+  externalName: redis-master.default.svc.cluster.local
+  ports:
+    - port: 6379
+      targetPort: 6379

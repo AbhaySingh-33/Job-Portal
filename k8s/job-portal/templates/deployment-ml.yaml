@@ -1,0 +1,32 @@
+{{- if .Values.ml.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.ml.name }}
+  labels:
+    app: {{ .Values.ml.name }}
+spec:
+  replicas: {{ .Values.ml.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.ml.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.ml.name }}
+    spec:
+      containers:
+        - name: {{ .Values.ml.name }}
+          image: "{{ .Values.ml.image.repository }}:{{ .Values.ml.image.tag }}"
+          imagePullPolicy: {{ .Values.ml.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.ml.service.port }}
+          resources:
+            {{- toYaml .Values.ml.resources | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-config
+            - secretRef:
+                name: {{ .Release.Name }}-secrets
+          # Add any ML specific environment variables here if needed
+{{- end }}

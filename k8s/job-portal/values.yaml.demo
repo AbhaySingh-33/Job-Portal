@@ -1,0 +1,155 @@
+# Global settings
+global:
+  environment: production
+  domain: localhost # Change this if deploying to a real domain
+
+# ---------------------------------------------------------
+# Microservices Configuration
+# ---------------------------------------------------------
+
+auth:
+  enabled: true
+  name: auth-service
+  image:
+    repository: auth-service
+    tag: "latest"
+    pullPolicy: Never
+  service:
+    port: 5000
+    targetPort: 5000
+  replicas: 1
+
+utils:
+  enabled: true
+  name: utils-service
+  image:
+    repository: abhay33/job-portal-utils
+    tag: "01"
+    pullPolicy: IfNotPresent
+  service:
+    port: 5001
+    targetPort: 5001
+  replicas: 1
+
+user:
+  enabled: true
+  name: user-service
+  image:
+    repository: abhay33/job-portal-user
+    tag: "01"
+    pullPolicy: IfNotPresent
+  service:
+    port: 5002
+    targetPort: 5002
+  replicas: 1
+
+job:
+  enabled: true
+  name: job-service
+  image:
+    repository: abhay33/job-portal-job
+    tag: "01"
+    pullPolicy: IfNotPresent
+  service:
+    port: 5003
+    targetPort: 5003
+  replicas: 1
+
+payment:
+  enabled: true
+  name: payment-service
+  image:
+    repository: abhay33/job-portal-payment
+    tag: "01"
+    pullPolicy: IfNotPresent
+  service:
+    port: 5004
+    targetPort: 5004
+  replicas: 1
+
+interview:
+  enabled: true
+  name: interview-service
+  image:
+    repository: abhay33/job-portal-interview
+    tag: "02"
+    pullPolicy: IfNotPresent
+  service:
+    port: 5005
+    targetPort: 5005
+  replicas: 1
+
+ml:
+  enabled: true
+  name: ml-recommendation
+  image:
+    repository: abhay33/job-portal-ml
+    tag: "01"
+    pullPolicy: IfNotPresent
+  service:
+    port: 8000
+    targetPort: 8000
+  replicas: 1
+  resources:
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+
+frontend:
+  enabled: true
+  name: frontend-service
+  image:
+    repository: abhay33/job-portal-frontend
+    tag: "05"
+    pullPolicy: IfNotPresent
+  service:
+    port: 80 # Exposed Port
+    targetPort: 3000 # Container Port (Next.js)
+  replicas: 1
+
+# ---------------------------------------------------------
+# Secrets & Credentials (FILL THESE CAREFULLY)
+# ---------------------------------------------------------
+secrets:
+  # Database (Neon Console: Connection String -> Postgres)
+  dbUrl: "postgresql://USER:PASSWORD@HOST/DB?sslmode=require&channel_binding=require"
+
+  # Redis (Upstash Console: REST API Section)
+  # NOTE: Your auth service uses @upstash/redis which needs REST url/token
+  upstashRedisRestUrl: "https://your-upstash-redis.upstash.io"
+  upstashRedisRestToken: "YOUR_UPSTASH_REDIS_REST_TOKEN"
+  # Standard Redis URL might be needed for other libs
+  redisUrl: "redis://default:YOUR_REDIS_PASSWORD@your-upstash-redis.upstash.io:6379"
+
+  # Kafka (Aiven Console: Service Integration -> Kafka)
+  kafkaBroker: "YOUR_KAFKA_BROKER"
+  kafkaUsername: "avnadmin"
+  kafkaPassword: "YOUR_KAFKA_PASSWORD"
+
+  # Authentication
+  jwtSecret: "YOUR_JWT_SECRET"
+  jwtRefreshSecret: "YOUR_JWT_REFRESH_SECRET"
+
+  # Cloudinary
+  cloudinaryCloudName: "YOUR_CLOUDINARY_CLOUD_NAME"
+  cloudinaryApiKey: "YOUR_CLOUDINARY_API_KEY"
+  cloudinaryApiSecret: "YOUR_CLOUDINARY_API_SECRET"
+
+  # Google AI (Gemini) - Default for services
+  googleAiKey: "YOUR_GOOGLE_AI_KEY"
+  # Specific for Interview Service
+  interviewGoogleAiKey: "YOUR_INTERVIEW_GOOGLE_AI_KEY"
+
+  # Razorpay
+  razorpayKeyId: "YOUR_RAZORPAY_KEY_ID"
+  razorpayKeySecret: "YOUR_RAZORPAY_KEY_SECRET"
+
+  # Email (Gmail SMTP)
+  smtpHost: "smtp.gmail.com"
+  smtpPort: "465"
+  smtpUser: "your-email@gmail.com"
+  smtpPass: "YOUR_SMTP_APP_PASSWORD"
+
+  # Voice AI
+  vapiToken: "YOUR_VAPI_TOKEN"
+  deepgramKey: "YOUR_DEEPGRAM_KEY"

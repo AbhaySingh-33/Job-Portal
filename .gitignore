@@ -32,3 +32,4 @@ deploy-k8s.ps1
 rebuild-frontend.ps1
 k8s/manifests/02-secrets.yaml
 *secrets.yaml
+k8s/job-portal/values.yaml

@@ -1,0 +1,45 @@
+{{- range $serviceName, $config := .Values }}
+{{- if and (has $serviceName (list "auth" "user" "job" "payment" "interview" "utils")) $config.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $config.name }}
+  labels:
+    app: {{ $config.name }}
+spec:
+  replicas: {{ $config.replicas }}
+  selector:
+    matchLabels:
+      app: {{ $config.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $config.name }}
+    spec:
+      containers:
+        - name: {{ $config.name }}
+          image: "{{ $config.image.repository }}:{{ $config.image.tag }}"
+          imagePullPolicy: {{ $config.image.pullPolicy }}
+          ports:
+            - containerPort: {{ $config.service.port }}
+          envFrom:
+            - configMapRef:
+                name: {{ $.Release.Name }}-config
+            - secretRef:
+                name: {{ $.Release.Name }}-secrets
+          env:
+            - name: PORT
+              value: "{{ $config.service.port }}"
+            # Inject Cloudinary/SMTP specifically for Utils
+            {{- if eq $serviceName "utils" }}
+            - name: CLOUD_NAME
+              valueFrom: { secretKeyRef: { name: {{ $.Release.Name }}-secrets, key: CLOUD_NAME } }
+            {{- end }}
+            # Override Google AI Key for Interview Service
+            {{- if eq $serviceName "interview" }}
+            - name: GOOGLE_GENERATIVE_AI_API_KEY
+              valueFrom: { secretKeyRef: { name: {{ $.Release.Name }}-secrets, key: INTERVIEW_BIG_GEMINI_KEY } }
+            {{- end }}
+{{- end }}
+{{- end }}

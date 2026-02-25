@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+data:
+  NODE_ENV: {{ .Values.global.environment }}
+  
+  # Service Discovery (Using K8s DNS names)
+  AUTH_SERVICE_URL: "http://{{ .Values.auth.name }}:{{ .Values.auth.service.port }}"
+  USER_SERVICE_URL: "http://{{ .Values.user.name }}:{{ .Values.user.service.port }}"
+  JOB_SERVICE_URL: "http://{{ .Values.job.name }}:{{ .Values.job.service.port }}"
+  PAYMENT_SERVICE_URL: "http://{{ .Values.payment.name }}:{{ .Values.payment.service.port }}"
+  INTERVIEW_SERVICE_URL: "http://{{ .Values.interview.name }}:{{ .Values.interview.service.port }}"
+  UPLOAD_SERVICE: "http://{{ .Values.utils.name }}:{{ .Values.utils.service.port }}"
+  ML_SERVICE_URL: "http://{{ .Values.ml.name }}:{{ .Values.ml.service.port }}"
+  
+  # Public URLs for Frontend (Client-side access)
+  # These match the Ingress paths defined in ingress.yaml
+  NEXT_PUBLIC_API_URL: "http://{{ .Values.global.domain }}/api"
+  NEXT_PUBLIC_AUTH_SERVICE: "http://{{ .Values.global.domain }}/api/auth"
+  NEXT_PUBLIC_USER_SERVICE: "http://{{ .Values.global.domain }}/api/user"
+  NEXT_PUBLIC_JOB_SERVICE: "http://{{ .Values.global.domain }}/api/job"
+  NEXT_PUBLIC_PAYMENT_SERVICE: "http://{{ .Values.global.domain }}/api/payment"
+  NEXT_PUBLIC_INTERVIEW_SERVICE: "http://{{ .Values.global.domain }}/api/interview"
+  NEXT_PUBLIC_UTILS_SERVICE: "http://{{ .Values.global.domain }}/api/utils"
+  
+  # Kafka Config (Broker is injected via Secret, but SSL setting is config)
+  KAFKA_SSL: "true"

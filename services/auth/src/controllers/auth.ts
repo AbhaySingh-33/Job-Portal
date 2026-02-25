@@ -75,14 +75,12 @@ export const registerUser = TryCatch(
       html: getVerifyEmailHtml(email, verifyToken),
     };
 
-    //publish message to kafka topic
-    try {
-      await publishToTopic("send-mail", message);
-    } catch (error: any) {
+    //publish message to kafka topic (non-blocking)
+    publishToTopic("send-mail", message).catch(async (error: any) => {
       console.error('⚠️ Failed to queue verification email, will retry...', error.message);
       // Store email data in Redis for retry mechanism
       await redisClient.set(`pending-email:${email}`, JSON.stringify(message), { ex: 3600 });
-    }
+    });
     
     await redisClient.set(rateLimitKey, "1", { ex: 60 }); // 1 minute rate limit
 
@@ -155,8 +153,16 @@ export const loginUser = TryCatch(
       throw new ErrorHandler("Please fill all details", 400);
     }
 
-    const rateLimitKey = `login-rate-limit:${req.ip}:${email}`;
-    const attemptCount = await redisClient.get(rateLimitKey);
+    const ip = req.ip || '127.0.0.1';
+    const rateLimitKey = `login-rate-limit:${ip}:${email}`;
+    
+    let attemptCount;
+    try {
+        attemptCount = await redisClient.get(rateLimitKey);
+    } catch (error: any) {
+        console.error("Rate limit check failed (non-critical):", error.message);
+        attemptCount = null; // Proceed even if Redis fails for rate limiting
+    }
     
     if (attemptCount && parseInt(attemptCount as string) >= 5) {
       throw new ErrorHandler("Too many login attempts. Please try again later.", 429);
@@ -183,8 +189,12 @@ export const loginUser = TryCatch(
       `;
 
     if (user.length === 0) {
-      await redisClient.incr(rateLimitKey);
-      await redisClient.expire(rateLimitKey, 900); // 15 minutes
+      try {
+        await redisClient.incr(rateLimitKey);
+        await redisClient.expire(rateLimitKey, 900); // 15 minutes
+      } catch (error: any) {
+        console.error("Redis rate limit increment failed:", error.message);
+      }
       throw new ErrorHandler("Invalid credentials", 400);
     }
 
@@ -192,8 +202,12 @@ export const loginUser = TryCatch(
     const matchPassword = await bcrypt.compare(password, userObject.password);
 
     if (!matchPassword) {
-      await redisClient.incr(rateLimitKey);
-      await redisClient.expire(rateLimitKey, 900);
+      try {
+        await redisClient.incr(rateLimitKey);
+        await redisClient.expire(rateLimitKey, 900);
+      } catch (error: any) {
+        console.error("Redis matchPassword failed:", error.message);
+      }
       throw new ErrorHandler("Invalid credentials", 400);
     }
 
@@ -209,13 +223,12 @@ export const loginUser = TryCatch(
       html: getOtpHtml(otp),
     };
 
-    try {
-      await publishToTopic("send-mail", message);
-    } catch (error: any) {
+    // Non-blocking email sending to avoid timeouts
+    publishToTopic("send-mail", message).catch(async (error: any) => {
       console.error('⚠️ Failed to queue OTP email, will retry...', error.message);
       // Store email data in Redis for retry mechanism
       await redisClient.set(`pending-email:${email}`, JSON.stringify(message), { ex: 300 });
-    }
+    });
 
     res.json({
       message: "OTP sent to your email. Please verify to complete login.",
@@ -243,8 +256,6 @@ export const verifyOTPAndLogin = TryCatch(
 
     const otpKey = `otp:${email}`;
     const storedOTP = await redisClient.get(otpKey);
-
-    console.log('OTP Debug:', { email, receivedOTP: otp, storedOTP, otpKey });
 
     if (!storedOTP) {
       throw new ErrorHandler("OTP expired or invalid", 400);

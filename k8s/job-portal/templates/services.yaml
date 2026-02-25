@@ -1,0 +1,16 @@
+{{- range $serviceName, $config := .Values }}
+{{- if and (has $serviceName (list "auth" "user" "job" "payment" "interview" "utils" "ml" "frontend")) $config.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $config.name }}
+spec:
+  selector:
+    app: {{ $config.name }}
+  ports:
+    - protocol: TCP
+      port: {{ $config.service.port }}
+      targetPort: {{ $config.service.targetPort }}
+{{- end }}
+{{- end }}

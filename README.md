@@ -2,6 +2,8 @@
 
 A modern, full-stack job portal application built with microservices architecture, featuring AI-powered job recommendations, real-time application tracking, AI-powered interviews, and integrated payment systems.
 
+📘 **[Read the Kubernetes Deployment Guide](./DEPLOYMENT.md)** - Detailed guide on our Helm implementation, troubleshooting, and commands.
+
 ## ✨ Features
 
 ### For Job Seekers
