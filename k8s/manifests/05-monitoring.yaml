@@ -1,0 +1,154 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: job-portal
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    scrape_configs:
+      - job_name: 'auth-service'
+        static_configs:
+          - targets: ['auth-service:5000']
+            labels:
+              service: 'auth'
+
+      - job_name: 'utils-service'
+        static_configs:
+          - targets: ['utils-service:5001']
+            labels:
+              service: 'utils'
+
+      - job_name: 'user-service'
+        static_configs:
+          - targets: ['user-service:5002']
+            labels:
+              service: 'user'
+
+      - job_name: 'job-service'
+        static_configs:
+          - targets: ['job-service:5003']
+            labels:
+              service: 'job'
+
+      - job_name: 'payment-service'
+        static_configs:
+          - targets: ['payment-service:5004']
+            labels:
+              service: 'payment'
+
+      - job_name: 'interview-service'
+        static_configs:
+          - targets: ['interview-service:5005']
+            labels:
+              service: 'interview'
+
+      - job_name: 'ml-service'
+        static_configs:
+          - targets: ['ml-service:8000']
+            labels:
+              service: 'ml'
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: job-portal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+      - name: prometheus
+        image: prom/prometheus:latest
+        ports:
+        - containerPort: 9090
+        volumeMounts:
+        - name: config
+          mountPath: /etc/prometheus
+        - name: storage
+          mountPath: /prometheus
+        args:
+          - '--config.file=/etc/prometheus/prometheus.yml'
+          - '--storage.tsdb.path=/prometheus'
+      volumes:
+      - name: config
+        configMap:
+          name: prometheus-config
+      - name: storage
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: job-portal
+spec:
+  selector:
+    app: prometheus
+  ports:
+  - protocol: TCP
+    port: 9090
+    targetPort: 9090
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: job-portal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+      - name: grafana
+        image: grafana/grafana:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: GF_SECURITY_ADMIN_USER
+          value: "admin"
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          value: "admin123"
+        - name: GF_USERS_ALLOW_SIGN_UP
+          value: "false"
+        - name: GF_SERVER_ROOT_URL
+          value: "http://localhost/grafana"
+        - name: GF_SERVER_SERVE_FROM_SUB_PATH
+          value: "true"
+        volumeMounts:
+        - name: grafana-storage
+          mountPath: /var/lib/grafana
+      volumes:
+      - name: grafana-storage
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: job-portal
+spec:
+  selector:
+    app: grafana
+  ports:
+  - protocol: TCP
+    port: 3000
+    targetPort: 3000
+  type: ClusterIP

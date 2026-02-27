@@ -1,0 +1,60 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'auth-service'
+    static_configs:
+      - targets: ['host.docker.internal:5000']
+        labels:
+          service: 'auth'
+          environment: 'production'
+
+  - job_name: 'utils-service'
+    static_configs:
+      - targets: ['host.docker.internal:5001']
+        labels:
+          service: 'utils'
+          environment: 'production'
+
+  - job_name: 'user-service'
+    static_configs:
+      - targets: ['host.docker.internal:5002']
+        labels:
+          service: 'user'
+          environment: 'production'
+
+  - job_name: 'job-service'
+    static_configs:
+      - targets: ['host.docker.internal:5003']
+        labels:
+          service: 'job'
+          environment: 'production'
+
+  - job_name: 'payment-service'
+    static_configs:
+      - targets: ['host.docker.internal:5004']
+        labels:
+          service: 'payment'
+          environment: 'production'
+
+  - job_name: 'interview-service'
+    static_configs:
+      - targets: ['host.docker.internal:5005']
+        labels:
+          service: 'interview'
+          environment: 'production'
+
+  - job_name: 'ml-service'
+    static_configs:
+      - targets: ['host.docker.internal:8000']
+        labels:
+          service: 'ml-recommendation'
+          environment: 'production'
+
+  - job_name: 'frontend'
+    static_configs:
+      - targets: ['host.docker.internal:3000']
+        labels:
+          service: 'frontend'
+          environment: 'production'

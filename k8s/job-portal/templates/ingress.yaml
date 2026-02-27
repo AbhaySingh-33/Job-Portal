@@ -74,6 +74,26 @@ spec:
                 port:
                   number: {{ .Values.ml.service.port }}
 
+          {{- if .Values.monitoring.enabled }}
+          # Prometheus
+          - path: /prometheus
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.monitoring.prometheus.name }}
+                port:
+                  number: {{ .Values.monitoring.prometheus.service.port }}
+
+          # Grafana
+          - path: /grafana
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.monitoring.grafana.name }}
+                port:
+                  number: {{ .Values.monitoring.grafana.service.port }}
+          {{- end }}
+
           # Frontend (Root)
           - path: /
             pathType: Prefix

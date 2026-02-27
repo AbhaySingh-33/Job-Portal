@@ -62,6 +62,24 @@ spec:
             port:
               number: 5005
 
+      # Prometheus
+      - path: /prometheus
+        pathType: Prefix
+        backend:
+          service:
+            name: prometheus
+            port:
+              number: 9090
+
+      # Grafana
+      - path: /grafana
+        pathType: Prefix
+        backend:
+          service:
+            name: grafana
+            port:
+              number: 3000
+
       # Frontend (Root) - Catch all
       - path: /
         pathType: Prefix

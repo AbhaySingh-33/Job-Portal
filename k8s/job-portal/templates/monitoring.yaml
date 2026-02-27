@@ -1,0 +1,234 @@
+{{- if .Values.monitoring.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: job-portal
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: {{ .Values.monitoring.prometheus.scrapeInterval }}
+      evaluation_interval: {{ .Values.monitoring.prometheus.scrapeInterval }}
+
+    scrape_configs:
+      {{- if .Values.auth.enabled }}
+      - job_name: 'auth-service'
+        metrics_path: '/metrics'
+        static_configs:
+          - targets: ['{{ .Values.auth.name }}:{{ .Values.auth.service.port }}']
+            labels:
+              service: 'auth'
+              environment: '{{ .Values.global.environment }}'
+      {{- end }}
+
+      {{- if .Values.utils.enabled }}
+      - job_name: 'utils-service'
+        metrics_path: '/metrics'
+        static_configs:
+          - targets: ['{{ .Values.utils.name }}:{{ .Values.utils.service.port }}']
+            labels:
+              service: 'utils'
+              environment: '{{ .Values.global.environment }}'
+      {{- end }}
+
+      {{- if .Values.user.enabled }}
+      - job_name: 'user-service'
+        metrics_path: '/metrics'
+        static_configs:
+          - targets: ['{{ .Values.user.name }}:{{ .Values.user.service.port }}']
+            labels:
+              service: 'user'
+              environment: '{{ .Values.global.environment }}'
+      {{- end }}
+
+      {{- if .Values.job.enabled }}
+      - job_name: 'job-service'
+        metrics_path: '/metrics'
+        static_configs:
+          - targets: ['{{ .Values.job.name }}:{{ .Values.job.service.port }}']
+            labels:
+              service: 'job'
+              environment: '{{ .Values.global.environment }}'
+      {{- end }}
+
+      {{- if .Values.payment.enabled }}
+      - job_name: 'payment-service'
+        metrics_path: '/metrics'
+        static_configs:
+          - targets: ['{{ .Values.payment.name }}:{{ .Values.payment.service.port }}']
+            labels:
+              service: 'payment'
+              environment: '{{ .Values.global.environment }}'
+      {{- end }}
+
+      {{- if .Values.interview.enabled }}
+      - job_name: 'interview-service'
+        metrics_path: '/metrics'
+        static_configs:
+          - targets: ['{{ .Values.interview.name }}:{{ .Values.interview.service.port }}']
+            labels:
+              service: 'interview'
+              environment: '{{ .Values.global.environment }}'
+      {{- end }}
+
+      {{- if .Values.ml.enabled }}
+      - job_name: 'ml-service'
+        metrics_path: '/metrics'
+        static_configs:
+          - targets: ['{{ .Values.ml.name }}:{{ .Values.ml.service.port }}']
+            labels:
+              service: 'ml'
+              environment: '{{ .Values.global.environment }}'
+      {{- end }}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.monitoring.prometheus.name }}
+  namespace: job-portal
+spec:
+  replicas: {{ .Values.monitoring.prometheus.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.monitoring.prometheus.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.monitoring.prometheus.name }}
+    spec:
+      containers:
+      - name: prometheus
+        image: {{ .Values.monitoring.prometheus.image.repository }}:{{ .Values.monitoring.prometheus.image.tag }}
+        imagePullPolicy: {{ .Values.monitoring.prometheus.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.monitoring.prometheus.service.targetPort }}
+        volumeMounts:
+        - name: prometheus-config
+          mountPath: /etc/prometheus
+        - name: prometheus-storage
+          mountPath: /prometheus
+        args:
+          - '--config.file=/etc/prometheus/prometheus.yml'
+          - '--storage.tsdb.path=/prometheus'
+          - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+          - '--web.console.templates=/usr/share/prometheus/consoles'
+      volumes:
+      - name: prometheus-config
+        configMap:
+          name: prometheus-config
+      - name: prometheus-storage
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.monitoring.prometheus.name }}
+  namespace: job-portal
+spec:
+  selector:
+    app: {{ .Values.monitoring.prometheus.name }}
+  ports:
+    - protocol: TCP
+      port: {{ .Values.monitoring.prometheus.service.port }}
+      targetPort: {{ .Values.monitoring.prometheus.service.targetPort }}
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: job-portal
+data:
+  prometheus.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://{{ .Values.monitoring.prometheus.name }}:{{ .Values.monitoring.prometheus.service.port }}
+        access: proxy
+        isDefault: true
+  dashboards.yaml: |
+     apiVersion: 1
+     providers:
+      - name: 'Job Portal Dashboards'
+        folder: ''
+        options:
+          path: /var/lib/grafana/dashboards
+        disableDeletion: false
+        updateIntervalSeconds: 10
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.monitoring.grafana.name }}
+  namespace: job-portal
+spec:
+  replicas: {{ .Values.monitoring.grafana.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.monitoring.grafana.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.monitoring.grafana.name }}
+    spec:
+      containers:
+      - name: grafana
+        image: {{ .Values.monitoring.grafana.image.repository }}:{{ .Values.monitoring.grafana.image.tag }}
+        imagePullPolicy: {{ .Values.monitoring.grafana.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.monitoring.grafana.service.targetPort }}
+        env:
+        - name: GF_SECURITY_ADMIN_USER
+          value: "{{ .Values.monitoring.grafana.adminUser }}"
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          value: "{{ .Values.monitoring.grafana.adminPassword }}"
+        - name: GF_USERS_ALLOW_SIGN_UP
+          value: "false"
+        - name: GF_SERVER_ROOT_URL
+          value: "http://{{ .Values.global.domain }}/grafana"
+        - name: GF_SERVER_SERVE_FROM_SUB_PATH
+          value: "true"
+        - name: GF_SERVER_HTTP_ADDR
+          value: "0.0.0.0"
+        volumeMounts:
+        - name: grafana-storage
+          mountPath: /var/lib/grafana
+        - name: grafana-datasources
+          mountPath: /etc/grafana/provisioning/datasources/prometheus.yaml
+          subPath: prometheus.yaml
+        - name: grafana-datasources
+          mountPath: /etc/grafana/provisioning/dashboards/dashboards.yaml
+          subPath: dashboards.yaml
+        - name: grafana-dashboards
+          mountPath: /var/lib/grafana/dashboards
+      volumes:
+      - name: grafana-storage
+        emptyDir: {}
+      - name: grafana-datasources
+        configMap:
+          name: grafana-datasources
+      - name: grafana-dashboards
+        configMap:
+          name: grafana-dashboards-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.monitoring.grafana.name }}
+  namespace: job-portal
+spec:
+  selector:
+    app: {{ .Values.monitoring.grafana.name }}
+  ports:
+    - protocol: TCP
+      port: {{ .Values.monitoring.grafana.service.port }}
+      targetPort: {{ .Values.monitoring.grafana.service.targetPort }}
+  type: ClusterIP
+{{- end }}
