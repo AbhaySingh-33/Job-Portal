@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: auth-service
-        image: abhay33/job-portal-auth:01
+        image: abhay33/job-portal-auth:v3
         ports:
         - containerPort: 5000
         envFrom:
@@ -57,7 +57,7 @@ spec:
     spec:
       containers:
       - name: user-service
-        image: abhay33/job-portal-user:01
+        image: abhay33/job-portal-user:v3
         ports:
         - containerPort: 5002
         envFrom:
@@ -99,7 +99,7 @@ spec:
     spec:
       containers:
       - name: job-service
-        image: abhay33/job-portal-job:01
+        image: abhay33/job-portal-job:v3
         ports:
         - containerPort: 5003
         envFrom:
@@ -141,7 +141,7 @@ spec:
     spec:
       containers:
       - name: utils-service
-        image: abhay33/job-portal-utils:01
+        image: abhay33/job-portal-utils:v4
         ports:
         - containerPort: 5001
         envFrom:
@@ -183,7 +183,7 @@ spec:
     spec:
       containers:
       - name: payment-service
-        image: abhay33/job-portal-payments:01
+        image: abhay33/job-portal-payments:v2
         ports:
         - containerPort: 5004
         envFrom:
@@ -225,7 +225,7 @@ spec:
     spec:
       containers:
       - name: interview-service
-        image: abhay33/job-portal-interview:02
+        image: abhay33/job-portal-interview:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5005

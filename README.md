@@ -2,50 +2,53 @@
 
 A modern, full-stack job portal application built with microservices architecture, featuring AI-powered job recommendations, real-time application tracking, AI-powered interviews, and integrated payment systems.
 
-📘 **[Read the Kubernetes Deployment Guide](./DEPLOYMENT.md)** - Detailed guide on our Helm implementation, troubleshooting, and commands.
-
 ## ✨ Features
 
 ### For Job Seekers
 - 🔍 **Smart Job Search** - Find jobs based on skills, location, and preferences
-- 🤖 **AI-Powered Recommendations** - Get personalized job suggestions using semantic search with sentence transformers
-- 📊 **Application Tracking** - Track your application status in real-time with detailed history
-- 💼 **Profile Management** - Create and manage your professional profile with file uploads
-- 📧 **Email Notifications** - Receive updates on application status changes via Kafka events
-- 💳 **Premium Features** - Access advanced features with Razorpay payment integration
-- 🎤 **AI-Powered Interviews** - Conduct voice-based interviews using VAPI and Deepgram integration
+- 🤖 **AI-Powered Recommendations** - Personalized job suggestions using semantic search with sentence transformers
+- 📊 **Application Tracking** - Track application status in real-time with full status history
+- 💼 **Profile Management** - Manage professional profile, profile picture, resume, and skills
+- 📧 **Email Notifications** - Automatic notifications on application status changes via Kafka events
+- 💳 **Premium Subscription** - Access advanced features with Razorpay payment integration
+- 🎤 **AI-Powered Interviews** - Voice-based interviews with AI-generated questions and feedback
+- 📄 **Resume Analyzer** - AI-powered ATS score and resume improvement suggestions
+- 🧭 **Career Guide** - AI-generated career path suggestions based on your skills
 
 ### For Recruiters
-- 📝 **Job Posting** - Create and manage job listings with rich descriptions
-- 👥 **Applicant Management** - Review and track applications with status history
+- 🏢 **Company Management** - Create and manage company profiles
+- 📝 **Job Posting** - Create and manage job listings
+- 👥 **Applicant Management** - Review applications with full status history
 - 🔄 **Status Updates** - Update application statuses with automatic email notifications
-- 📈 **Analytics Dashboard** - Track recruitment metrics and application insights
-- 🎯 **AI Interview Analysis** - Leverage Google Generative AI for interview evaluation
 
 ### Technical Features
-- 🏗️ **Microservices Architecture** - Scalable and maintainable service-based design
-- 🔐 **Secure Authentication** - JWT-based auth with Upstash Redis session management
+- 🏗️ **Microservices Architecture** - 7 independent services with shared metrics library
+- 🔐 **Secure Authentication** - JWT-based auth with OTP login, email verification, password reset
 - 📨 **Event-Driven Communication** - Aiven Kafka-based messaging between services
 - 🤖 **Machine Learning** - Semantic job recommendations using sentence transformers
-- ☁️ **Cloud Storage** - Cloudinary integration for file uploads and management
-- 💰 **Payment Integration** - Razorpay payment gateway integration
-- 🗄️ **Modern Database** - Neon PostgreSQL with advanced triggers and functions
+- ☁️ **Cloud Storage** - Cloudinary integration for file uploads
+- 💰 **Payment Integration** - Razorpay payment gateway
+- 🗄️ **Modern Database** - Neon PostgreSQL (Serverless)
+- 📈 **Observability** - Prometheus metrics + Grafana dashboards for all services
 
 ## 🏗️ Architecture
 
-This project follows a microservices architecture with the following services:
-
 ```
 Job-Portal/
-├── frontend/              # Next.js 16 frontend application
-└── services/
-    ├── auth/             # Authentication & authorization service (Port 5000)
-    ├── user/             # User profile management service (Port 5002)
-    ├── job/              # Job posting & management service (Port 5003)
-    ├── payments/         # Razorpay payment processing service (Port 5004)
-    ├── interview/        # AI-powered interview service (Port 5005)
-    ├── utils/            # Utility services (email, file upload, AI) (Port 5001)
-    └── ml-recommendation/ # ML-based job recommendation engine (Port 8000)
+├── frontend/                  # Next.js 16 frontend application
+├── services/
+│   ├── auth/                  # Authentication & authorization (Port 5000)
+│   ├── utils/                 # File upload, email, AI utilities (Port 5001)
+│   ├── user/                  # User profile management (Port 5002)
+│   ├── job/                   # Job posting & management (Port 5003)
+│   ├── payments/              # Razorpay payment processing (Port 5004)
+│   ├── interview/             # AI-powered interview service (Port 5005)
+│   ├── ml-recommendation/     # ML-based job recommendation engine (Port 8000)
+│   └── shared/                # Shared Prometheus metrics library
+├── k8s/
+│   ├── job-portal/            # Helm chart (v0.2.0)
+│   └── manifests/             # Raw Kubernetes manifests (incl. monitoring)
+└── docs/                      # Deployment scripts & comprehensive guides
 ```
 
 ## 🛠️ Tech Stack
@@ -54,41 +57,58 @@ Job-Portal/
 - **Framework:** Next.js 16 (React 19)
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS 4
-- **UI Components:** Radix UI, Framer Motion, Shadcn/ui
-- **State Management:** React Hooks
+- **UI Components:** Radix UI, Shadcn/ui, Framer Motion, Lucide React
 - **HTTP Client:** Axios
 - **Notifications:** React Hot Toast
-- **Voice Integration:** VAPI Web SDK, Deepgram API
+- **Voice Integration:** VAPI Web SDK (`@vapi-ai/web`)
+- **Theme:** next-themes (dark/light mode)
 
 ### Backend Services
 - **Runtime:** Node.js with TypeScript
 - **Framework:** Express.js 5
-- **Database:** Neon PostgreSQL (Serverless)
-- **Caching:** Upstash Redis
-- **Message Queue:** Aiven Kafka
-- **Authentication:** JWT with bcrypt
-- **File Upload:** Multer with Cloudinary
+- **Database:** Neon PostgreSQL (`@neondatabase/serverless`)
+- **Caching:**  Redis (`redis`)
+- **Message Queue:** Aiven Kafka (`kafkajs`)
+- **Authentication:** JWT + bcrypt
+- **File Upload:** Multer + Cloudinary
+- **Metrics:** `prom-client` (shared library)
 
 ### ML Recommendation Service
 - **Language:** Python 3.10
-- **Framework:** FastAPI
-- **ML Libraries:** 
-  - Sentence Transformers (semantic search)
-  - PyTorch
-  - pandas, joblib
-- **Database:** PostgreSQL with psycopg2
+- **Framework:** FastAPI + uvicorn
+- **ML Libraries:** Sentence Transformers, PyTorch, pandas, joblib
+- **Database:** PostgreSQL (`psycopg2-binary`)
+- **Metrics:** `prometheus-fastapi-instrumentator`
 
-### Infrastructure & Third-Party Services
+### Observability
+- **Metrics:** Prometheus (scrapes all 7 services)
+- **Dashboards:** Grafana (pre-configured, accessible at `/grafana`)
+
+### Infrastructure
+- **Container Orchestration:** Kubernetes (Minikube for local) + Helm chart
 - **Database:** Neon PostgreSQL (Serverless)
-- **Cache/Session Store:** Upstash Redis
+- **Cache/Session:**  Redis
 - **Message Broker:** Aiven Kafka
 - **Cloud Storage:** Cloudinary
 - **Payment Gateway:** Razorpay
-- **Email Service:** Gmail SMTP via Nodemailer
-- **AI Services:** Google Generative AI (Gemini)
-- **Voice Services:** VAPI, Deepgram
+- **Email:** Gmail SMTP via Nodemailer
+- **AI:** Google Generative AI (Gemini 2.5 Flash)
+- **Voice:** VAPI
 
-## 🚀 Getting Started
+## � Documentation
+
+Detailed documentation available in the `docs/` directory:
+
+- **Deployment Guides**
+  - [`DEPLOYMENT.md`](docs/DEPLOYMENT.md) — Main deployment guide
+  - [`KUBERNETES_DEPLOYMENT_JOURNEY.md`](docs/KUBERNETES_DEPLOYMENT_JOURNEY.md) — Kubernetes setup details
+  - [`COMMANDS.md`](docs/COMMANDS.md) — Quick command reference
+
+- **Monitoring & ML**
+  - [`MONITORING_SUMMARY.md`](docs/MONITORING_SUMMARY.md) — Observability stack details
+  - [`ML_SEMANTIC_SEARCH_GUIDE.md`](docs/ML_SEMANTIC_SEARCH_GUIDE.md) — Semantic search implementation
+
+## �🚀 Getting Started
 
 ### Prerequisites
 - Node.js 20+
@@ -98,7 +118,8 @@ Job-Portal/
 - Aiven Kafka account
 - Cloudinary account
 - Razorpay account
-- Google AI API key
+- Google AI API key (Gemini)
+- VAPI account
 
 ### Installation
 
@@ -108,81 +129,43 @@ git clone https://github.com/AbhaySingh-33/Job-Portal.git
 cd Job-Portal
 ```
 
-#### 2. Set up the Frontend
+#### 2. Database Setup
+```bash
+psql -d your_neon_database -f services/database_migration.sql
+```
+
+#### 3. Frontend
 ```bash
 cd frontend
 npm install
-cp .env.example .env.local  # Configure your environment variables
+# Create .env.local with variables listed below
 npm run dev
 ```
 
-The frontend will be available at `http://localhost:3000`
-
-#### 3. Set up Backend Services
-
-**Auth Service (Port 5000):**
+#### 4. Backend Services
+Each service follows the same pattern:
 ```bash
-cd services/auth
+cd services/<service-name>
 npm install
+# Create .env with variables listed below
 npm run dev
 ```
 
-**Utils Service (Port 5001):**
-```bash
-cd services/utils
-npm install
-npm run dev
-```
+Services: `auth` (5000), `utils` (5001), `user` (5002), `job` (5003), `payments` (5004), `interview` (5005)
 
-**User Service (Port 5002):**
-```bash
-cd services/user
-npm install
-npm run dev
-```
-
-**Job Service (Port 5003):**
-```bash
-cd services/job
-npm install
-npm run dev
-```
-
-**Payment Service (Port 5004):**
-```bash
-cd services/payments
-npm install
-npm run dev
-```
-
-**Interview Service (Port 5005):**
-```bash
-cd services/interview
-npm install
-npm run dev
-```
-
-#### 4. Set up ML Recommendation Service
+#### 5. ML Recommendation Service
 ```bash
 cd services/ml-recommendation
 pip install -r requirements.txt
-
-# Train the model from your database
-python src/train_from_db.py
-
-# Start the API server
+python src/train_from_db.py        # Train model from DB
 uvicorn src.api:app --host 0.0.0.0 --port 8000
-```
-
-#### 5. Database Setup
-```bash
-# Run the database migration
-psql -d your_neon_database -f services/database_migration.sql
 ```
 
 ## 📝 Environment Variables
 
-### Frontend (.env.local)
+> **Note:** The variables below are for local development (`npm run dev`). For Kubernetes deployment, configuration is managed via `k8s/manifests/01-configmap.yaml` and `02-secrets.yaml`.
+
+### Frontend (`frontend/.env.local`)
 ```env
 NEXT_PUBLIC_RAZORPAY_KEY_ID=your_razorpay_key_id
 NEXT_PUBLIC_UTILS_SERVICE=http://localhost:5001
@@ -191,12 +174,10 @@ NEXT_PUBLIC_USER_SERVICE=http://localhost:5002
 NEXT_PUBLIC_JOB_SERVICE=http://localhost:5003
 NEXT_PUBLIC_PAYMENT_SERVICE=http://localhost:5004
 NEXT_PUBLIC_INTERVIEW_SERVICE=http://localhost:5005
-NEXT_PUBLIC_API_URL=http://localhost:5005/api
 NEXT_PUBLIC_VAPI_WEB_TOKEN=your_vapi_token
-NEXT_PUBLIC_DEEPGRAM_API_KEY=your_deepgram_key
 ```
 
-### Auth Service (.env)
+### Auth Service (`services/auth/.env`)
 ```env
 PORT=5000
 DB_URL=postgresql://username:password@host/database?sslmode=require
@@ -204,28 +185,15 @@ UPLOAD_SERVICE=http://localhost:5001
 JWT_SECRET=your_jwt_secret
 JWT_REFRESH_SECRET=your_refresh_secret
 Frontend_Url=http://localhost:3000
-REDIS_URL=rediss://default:token@host:6379
-UPSTASH_REDIS_REST_URL=https://your-redis-host.upstash.io
-UPSTASH_REDIS_REST_TOKEN=your_upstash_token
+REDIS_HOST=your-redis-host
+REDIS_PORT=6379
+REDIS_PASSWORD=your-redis-password
 KAFKA_BROKER=your-kafka-host:port
 KAFKA_USERNAME=your_kafka_username
 KAFKA_PASSWORD=your_kafka_password
 ```
 
-### Job Service (.env)
-```env
-PORT=5003
-DB_URL=postgresql://username:password@host/database?sslmode=require
-UPLOAD_SERVICE=http://localhost:5001
-JWT_SECRET=your_jwt_secret
-Frontend_Url=http://localhost:3000
-ML_SERVICE_URL=http://localhost:8000
-KAFKA_BROKER=your-kafka-host:port
-KAFKA_USERNAME=your_kafka_username
-KAFKA_PASSWORD=your_kafka_password
-```
-
-### Utils Service (.env)
+### Utils Service (`services/utils/.env`)
 ```env
 PORT=5001
 CLOUD_NAME=your_cloudinary_cloud_name
@@ -241,16 +209,44 @@ KAFKA_USERNAME=your_kafka_username
 KAFKA_PASSWORD=your_kafka_password
 ```
 
-### Payment Service (.env)
+### User Service (`services/user/.env`)
 ```env
-RAZORPAY_KEY_ID=your_razorpay_key_id
-RAZORPAY_KEY_SECRET=your_razorpay_key_secret
+PORT=5002
+DB_URL=postgresql://username:password@host/database?sslmode=require
+UPLOAD_SERVICE=http://localhost:5001
+JWT_SECRET=your_jwt_secret
+Frontend_Url=http://localhost:3000
+REDIS_HOST=your-redis-host
+REDIS_PORT=6379
+REDIS_PASSWORD=your-redis-password
+```
+
+### Job Service (`services/job/.env`)
+```env
+PORT=5003
+DB_URL=postgresql://username:password@host/database?sslmode=require
+UPLOAD_SERVICE=http://localhost:5001
+REDIS_HOST=your-redis-host
+REDIS_PORT=6379
+REDIS_PASSWORD=your-redis-password
+JWT_SECRET=your_jwt_secret
+Frontend_Url=http://localhost:3000
+ML_SERVICE_URL=http://localhost:8000
+KAFKA_BROKER=your-kafka-host:port
+KAFKA_USERNAME=your_kafka_username
+KAFKA_PASSWORD=your_kafka_password
+```
+
+### Payment Service (`services/payments/.env`)
+```env
 PORT=5004
 DB_URL=postgresql://username:password@host/database?sslmode=require
 JWT_SECRET=your_jwt_secret
+RAZORPAY_KEY_ID=your_razorpay_key_id
+RAZORPAY_KEY_SECRET=your_razorpay_key_secret
 ```
 
-### Interview Service (.env)
+### Interview Service (`services/interview/.env`)
 ```env
 PORT=5005
 DB_URL=postgresql://username:password@host/database?sslmode=require
@@ -258,168 +254,159 @@ JWT_SECRET=your_jwt_secret
 GOOGLE_GENERATIVE_AI_API_KEY=your_google_ai_api_key
 ```
 
-### ML Service (.env)
+### ML Service (`services/ml-recommendation/.env`)
 ```env
 DATABASE_URL=postgresql://username:password@host/database?sslmode=require
 ```
 
-## 📚 API Documentation
+## 📚 API Reference
 
-### Key Endpoints
+### Auth Service (Port 5000) — `/api/auth`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/register` | Register new user (with profile pic upload) |
+| GET | `/verify-email/:token` | Verify email address |
+| POST | `/login` | Login with email/password |
+| POST | `/verify-otp` | Verify OTP and complete login |
+| POST | `/forgot-password` | Request password reset email |
+| POST | `/reset-password/:token` | Reset password with token |
 
-#### Authentication Service (Port 5000)
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - User login
-- `POST /api/auth/logout` - User logout
-- `POST /api/auth/refresh` - Refresh JWT token
+### User Service (Port 5002) — `/api/user`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/me` | Get own profile |
+| GET | `/:userId` | Get public user profile |
+| PUT | `/update/profile` | Update profile details |
+| PUT | `/update/profile-pic` | Update profile picture |
+| PUT | `/update/resume` | Upload/update resume |
+| POST | `/add/skills` | Add skills to profile |
+| PUT | `/delete/skills` | Remove skills from profile |
+| POST | `/apply/job` | Apply for a job |
+| GET | `/application/all` | Get all own applications |
+| GET | `/application/history/:applicationId` | Get application status history |
 
-#### Job Service (Port 5003)
-- `GET /api/jobs` - List all jobs with pagination
-- `POST /api/jobs` - Create new job (recruiter only)
-- `GET /api/jobs/:id` - Get job details
-- `POST /api/jobs/:id/apply` - Apply to a job
-- `PATCH /api/applications/:id/status` - Update application status
-- `GET /api/applications/:id/history` - Get application status history
+### Job Service (Port 5003) — `/api/job`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/company/create` | Create company (recruiter) |
+| DELETE | `/company/delete/:companyId` | Delete company |
+| GET | `/company/all` | Get all companies |
+| GET | `/company/:id` | Get company details |
+| POST | `/create` | Create job posting |
+| PUT | `/update/:jobId` | Update job posting |
+| GET | `/all` | List all active jobs |
+| GET | `/:jobId` | Get single job details |
+| GET | `/applications/:jobId` | Get all applications for a job |
+| PUT | `/application/status/:id` | Update application status |
+| POST | `/recommend` | Get ML-powered job recommendations |
 
-#### ML Recommendation Service (Port 8000)
-- `POST /recommend` - Get job recommendations
-  ```json
-  {
-    "skills": ["React", "Node.js", "TypeScript"],
-    "num_recommendations": 5,
-    "threshold": 0.3
-  }
-  ```
-- `GET /health` - Health check endpoint
+### Utils Service (Port 5001) — `/api`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/upload` | Upload file to Cloudinary |
+| POST | `/career` | AI career path suggestions (Gemini) |
+| POST | `/resume-analyser` | ATS resume analysis (Gemini) |
 
-#### Interview Service (Port 5005)
-- `POST /api/interviews` - Create interview session
-- `GET /api/interviews/:id` - Get interview details
-- `POST /api/interviews/:id/evaluate` - AI-powered interview evaluation
+### Payment Service (Port 5004) — `/api/payment`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/checkout` | Create Razorpay order |
+| POST | `/verify` | Verify payment signature |
 
-#### Payment Service (Port 5004)
-- `POST /api/payments/create-order` - Create Razorpay order
-- `POST /api/payments/verify` - Verify payment signature
-- `GET /api/payments/history` - Get payment history
+### Interview Service (Port 5005) — `/api/interview`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/generate` | Generate AI interview questions |
+| POST | `/feedback` | Generate AI interview feedback |
+| GET | `/my-interviews` | Get all user interviews |
+| GET | `/:id` | Get interview by ID |
+| DELETE | `/:id` | Delete interview |
 
-## 🔄 Application Tracking System
+### ML Recommendation Service (Port 8000)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/recommend` | Get job recommendations by skills |
+| GET | `/health` | Health check |
+| GET | `/metrics` | Prometheus metrics |
 
-The application tracking system provides:
-- **Real-time Status Updates** - Track applications through various stages
-- **Status History** - Complete audit trail with timestamps and notes
-- **Email Notifications** - Automatic notifications via Kafka events
-- **Recruiter Notes** - Add context to status updates
+**Recommendation request:**
+```json
+{
+  "skills": ["React", "Node.js", "TypeScript"],
+  "num_recommendations": 5,
+  "threshold": 0.3
+}
+```
 
-Status Flow: `Pending → Reviewing → Shortlisted → Interviewed → Offered/Rejected`
+## 🔄 Application Status Flow
+
+`Pending → Reviewing → Shortlisted → Interviewed → Offered / Rejected`
+
+Full audit trail stored in `application_status_history` with timestamps and recruiter notes.
 
 ## 🤖 ML Recommendation Engine
 
-The recommendation system uses semantic search with sentence transformers:
-
-- **Model:** all-MiniLM-L6-v2 (sentence-transformers)
+- **Model:** `all-MiniLM-L6-v2` (sentence-transformers)
 - **Approach:** Cosine similarity on semantic embeddings
-- **Features:**
-  - Semantic understanding of job descriptions
-  - Skills-based matching with configurable threshold
-  - Real-time recommendations via FastAPI
+- **Training:** Pulls job data directly from PostgreSQL via `train_from_db.py`
 
-### Training the Model
-```bash
-cd services/ml-recommendation
-python src/train_from_db.py
-```
+## 🎤 AI Interview System
 
-### Testing Recommendations
-```bash
-python test_api.py
-```
+- **Question Generation:** Google Generative AI (Gemini 2.5 Flash)
+- **Voice Interface:** VAPI Web SDK
+- **Feedback:** AI-evaluated responses with structured scoring
 
-## 🎤 AI-Powered Interview System
+## 📈 Monitoring
 
-The interview system leverages:
-- **VAPI Web SDK** - Real-time voice interactions
-- **Deepgram API** - Speech-to-text conversion
-- **Google Generative AI** - Interview analysis and evaluation
-- **Real-time Processing** - Live interview feedback
+Prometheus scrapes metrics from all 7 services. Grafana dashboards are pre-provisioned.
 
-## 📊 Database Schema
+- **Prometheus:** `http://localhost/prometheus`
+- **Grafana:** `http://localhost/grafana` (Login: `admin` / `admin123`)
 
-Key tables with enhanced tracking:
-- `users` - User profiles and authentication
-- `jobs` - Job postings with rich metadata
-- `applications` - Job applications with status tracking
-- `application_status_history` - Complete audit trail
-- `payments` - Razorpay payment transactions
-- `interviews` - AI interview sessions and evaluations
+*Note: Requires `minikube tunnel` to be running.*
 
-## 🧪 Testing
-
-### Test ML Recommendations
-```bash
-cd services/ml-recommendation
-python test_api.py
-```
-
-### Test Application Email System
-The system uses Kafka events for real-time email notifications on status changes.
-
-## 🚀 Deployment
-
-### Frontend
-Deploy on Vercel with environment variables configured.
-
-### Backend Services
-Each microservice can be deployed independently using:
-- Docker containers
-- Railway/Render for individual services
-- Kubernetes for orchestration
-
-### ML Service
-Deploy the FastAPI service on:
-- Railway (recommended)
-- Render
-- Google Cloud Run
-
-## 🚢 Docker & Kubernetes Deployment
-
-This project supports full local deployment using Docker and Kubernetes (Minikube).
+## 🚢 Kubernetes Deployment
 
 ### Prerequisites
-1.  **Docker Desktop** (Installed & Running)
-2.  **Minikube** (Installed & Running)
-3.  **Kubectl** (Installed & Configured)
+- Docker Desktop, Minikube, kubectl
 
-### Quick Start Guide
-
-**1. Deployment**
-Run the automated deployment script to setup everything in your local cluster:
+### Deploy
 ```powershell
+# From docs/ directory (Choose one)
+
+# Option 1: Full Deployment (Recommended) - Includes Prometheus & Grafana
+.\deploy-with-monitoring.ps1
+
+# Option 2: Basic Deployment - Core services only
 .\deploy-k8s.ps1
 ```
-*   Sets up Namespace `job-portal`
-*   Creates ConfigMaps & Secrets
-*   Deploys 7 Backend Microservices + 1 Frontend Service
-*   Configures Ingress Routing
 
-**2. Accessing the App**
-Open a **new terminal as Administrator** and run the tunnel to expose the Ingress:
+### Access
 ```powershell
 minikube tunnel
+# App available at http://localhost/
 ```
-The application will be available at: **[http://localhost/](http://localhost/)**
 
-**3. Frontend Updates**
-If you modify frontend code or environment variables, rebuild the image correctly using the helper script:
+### Rebuild frontend after changes
 ```powershell
 .\rebuild-frontend.ps1
 ```
-*(This ensures build-time environment variables are correctly injected into the Docker image)*
 
-**4. Documentation**
-For a detailed log of the deployment process, troubleshooting steps, and architectural decisions, refer to:
-📄 **[KUBERNETES_DEPLOYMENT_JOURNEY.md](KUBERNETES_DEPLOYMENT_JOURNEY.md)**
+Helm chart version: `0.2.0` — located in `k8s/job-portal/`
 
----
+For detailed deployment notes see [`docs/KUBERNETES_DEPLOYMENT_JOURNEY.md`](docs/KUBERNETES_DEPLOYMENT_JOURNEY.md).
+
+## 📊 Database Schema
+
+Key tables:
+- `users` — profiles and authentication
+- `jobs` — job postings
+- `applications` — job applications with status
+- `application_status_history` — full audit trail
+- `payments` — Razorpay transactions
+- `interviews` — AI interview sessions and evaluations
+
+Migration file: `services/database_migration.sql`
 
 ## 🤝 Contributing
 
@@ -431,27 +418,10 @@ For a detailed log of the deployment process, troubleshooting steps, and archite
 
 ## 📄 License
 
-This project is open source and available under the MIT License.
+MIT License
 
-## 👨💻 Author
+## 👨‍💻 Author
 
 **Abhay Singh**
 - GitHub: [@AbhaySingh-33](https://github.com/AbhaySingh-33)
 - Email: abhaysingh957152@gmail.com
-
-## 🙏 Acknowledgments
-
-- Next.js team for the amazing React framework
-- Sentence Transformers for semantic search capabilities
-- Aiven for managed Kafka services
-- Upstash for serverless Redis
-- Neon for serverless PostgreSQL
-- All open-source contributors
-
-## 📞 Support
-
-For support, email abhaysingh957152@gmail.com or open an issue in the repository.
-
----
-
-⭐ If you find this project helpful, please give it a star!
