@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { sql } from "../utils/db.js";
+import { getCache, setCache, CacheTTL } from "../utils/redis.js";
 
 dotenv.config();
 
@@ -52,6 +53,15 @@ export const isAuth = async (
           });
           return;
     }
+    
+    const cacheKey = `user:${decodedPayload.id}:profile`;
+    const cachedUser = await getCache(cacheKey);
+
+    if (cachedUser && cachedUser.user_id) {
+        req.user = cachedUser;
+        next();
+        return;
+    }
 
     const users =
   await sql`
@@ -85,6 +95,9 @@ export const isAuth = async (
     const user = users[0] as User;
 
     user.skills = user.skills || [];
+
+    await setCache(cacheKey, user, CacheTTL.MEDIUM);
+
     req.user = user;
 
     next();

@@ -2,10 +2,12 @@ import app from "./app.js";
 import dotenv from "dotenv";
 import { sql } from "./utils/db.js"
 import { connectProducer } from "./producer.js";
+import { connectRedis } from "./utils/redis.js";
 
 dotenv.config();
 
 connectProducer();
+connectRedis().catch(err => console.error("Failed to connect to Redis:", err));
 
 async function initDB() {
   try {

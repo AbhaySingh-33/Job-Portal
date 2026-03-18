@@ -8,7 +8,7 @@ import axios from "axios";
 import jwt from "jsonwebtoken";
 import { forgotPasswordTemplate, getVerifyEmailHtml, getOtpHtml } from "../template.js";
 import { publishToTopic } from "../producer.js";
-import { redisClient } from "../index.js";
+import { getCache, setCache, deleteCache, incrementCache, expireCache } from "../utils/redis.js";
 import crypto from "crypto";
 
 export const registerUser = TryCatch(
@@ -21,7 +21,7 @@ export const registerUser = TryCatch(
 
     const rateLimitKey = `register-rate-limit:${req.ip}:${email}`;
 
-    if (await redisClient.get(rateLimitKey)) {
+    if (await getCache(rateLimitKey)) {
       throw new ErrorHandler(
         "Too many registration attempts. Please try again later.",
         429
@@ -67,7 +67,7 @@ export const registerUser = TryCatch(
       dataToStore.resume_public_id = data.public_id;
     }
 
-    await redisClient.set(verifyKey, JSON.stringify(dataToStore), { ex: 3600 }); // 1 hour expiration
+    await setCache(verifyKey, dataToStore, 3600); // 1 hour expiration
 
     const message = {
       to: email,
@@ -79,10 +79,10 @@ export const registerUser = TryCatch(
     publishToTopic("send-mail", message).catch(async (error: any) => {
       console.error('⚠️ Failed to queue verification email, will retry...', error.message);
       // Store email data in Redis for retry mechanism
-      await redisClient.set(`pending-email:${email}`, JSON.stringify(message), { ex: 3600 });
+      await setCache(`pending-email:${email}`, message, 3600);
     });
     
-    await redisClient.set(rateLimitKey, "1", { ex: 60 }); // 1 minute rate limit
+    await setCache(rateLimitKey, "1", 60); // 1 minute rate limit
 
     res.json({
       message: "Verification email sent. Please check your inbox.",
@@ -101,13 +101,13 @@ export const verifyEmail = TryCatch(
     }
 
     const verifyKey = `verify:${token}`;
-    const storedData = await redisClient.get(verifyKey);
+    const storedData = await getCache(verifyKey);
 
     if (!storedData) {
       throw new ErrorHandler("Invalid or expired verification token", 400);
     }
 
-    const userData = typeof storedData === 'string' ? JSON.parse(storedData) : storedData;
+    const userData = storedData;
     const { name, email, password, phoneNumber, role, bio, resume, resume_public_id } = userData;
 
     let registeredUser;
@@ -127,7 +127,7 @@ export const verifyEmail = TryCatch(
     }
 
     // Clean up verification token
-    await redisClient.del(verifyKey);
+    await deleteCache(verifyKey);
 
     const authToken = jwt.sign(
       { id: registeredUser?.user_id },
@@ -158,7 +158,7 @@ export const loginUser = TryCatch(
     
     let attemptCount;
     try {
-        attemptCount = await redisClient.get(rateLimitKey);
+        attemptCount = await getCache(rateLimitKey);
     } catch (error: any) {
         console.error("Rate limit check failed (non-critical):", error.message);
         attemptCount = null; // Proceed even if Redis fails for rate limiting
@@ -190,8 +190,8 @@ export const loginUser = TryCatch(
 
     if (user.length === 0) {
       try {
-        await redisClient.incr(rateLimitKey);
-        await redisClient.expire(rateLimitKey, 900); // 15 minutes
+        await incrementCache(rateLimitKey);
+        await expireCache(rateLimitKey, 900); // 15 minutes
       } catch (error: any) {
         console.error("Redis rate limit increment failed:", error.message);
       }
@@ -203,8 +203,8 @@ export const loginUser = TryCatch(
 
     if (!matchPassword) {
       try {
-        await redisClient.incr(rateLimitKey);
-        await redisClient.expire(rateLimitKey, 900);
+        await incrementCache(rateLimitKey);
+        await expireCache(rateLimitKey, 900);
       } catch (error: any) {
         console.error("Redis matchPassword failed:", error.message);
       }
@@ -215,7 +215,7 @@ export const loginUser = TryCatch(
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpKey = `otp:${email}`;
     
-    await redisClient.set(otpKey, otp, { ex: 300 }); // 5 minutes expiration
+    await setCache(otpKey, otp, 300); // 5 minutes expiration
 
     const message = {
       to: email,
@@ -227,7 +227,7 @@ export const loginUser = TryCatch(
     publishToTopic("send-mail", message).catch(async (error: any) => {
       console.error('⚠️ Failed to queue OTP email, will retry...', error.message);
       // Store email data in Redis for retry mechanism
-      await redisClient.set(`pending-email:${email}`, JSON.stringify(message), { ex: 300 });
+      await setCache(`pending-email:${email}`, message, 300);
     });
 
     res.json({
@@ -248,14 +248,14 @@ export const verifyOTPAndLogin = TryCatch(
     }
 
     const otpRateLimitKey = `otp-rate-limit:${req.ip}:${email}`;
-    const otpCount = await redisClient.get(otpRateLimitKey);
+    const otpCount = await getCache(otpRateLimitKey);
     
     if (otpCount && parseInt(otpCount as string) >= 3) {
       throw new ErrorHandler("Too many OTP attempts. Please request a new OTP.", 429);
     }
 
     const otpKey = `otp:${email}`;
-    const storedOTP = await redisClient.get(otpKey);
+    const storedOTP = await getCache(otpKey);
 
     if (!storedOTP) {
       throw new ErrorHandler("OTP expired or invalid", 400);
@@ -266,8 +266,8 @@ export const verifyOTPAndLogin = TryCatch(
     const cleanStoredOTP = storedOTP.toString().trim();
 
     if (cleanStoredOTP !== cleanOTP) {
-      await redisClient.incr(otpRateLimitKey);
-      await redisClient.expire(otpRateLimitKey, 300); // 5 minutes
+      await incrementCache(otpRateLimitKey);
+      await expireCache(otpRateLimitKey, 300); // 5 minutes
       throw new ErrorHandler("Invalid OTP", 400);
     }
 
@@ -301,9 +301,9 @@ export const verifyOTPAndLogin = TryCatch(
     );
 
     // Clean up OTP and rate limit keys
-    await redisClient.del(otpKey);
-    await redisClient.del(otpRateLimitKey);
-    await redisClient.del(`login-rate-limit:${req.ip}:${email}`);
+    await deleteCache(otpKey);
+    await deleteCache(otpRateLimitKey);
+    await deleteCache(`login-rate-limit:${req.ip}:${email}`);
 
     res.json({
       message: "User logged in successfully",
@@ -349,7 +349,7 @@ export const forgotPassword = TryCatch(async (req, res, next) => {
     html: forgotPasswordTemplate(resetLink),
   };
 
-  await redisClient.set(`forget :${email}`, resetToken, { ex: 900 }); // 15 minutes expiration
+  await setCache(`forget :${email}`, resetToken, 900); // 15 minutes expiration
 
   //publish message to kafka topic
   try {
@@ -357,7 +357,7 @@ export const forgotPassword = TryCatch(async (req, res, next) => {
   } catch (error: any) {
     console.error('⚠️ Failed to queue reset password email, will retry...', error.message);
     // Store email data in Redis for retry mechanism
-    await redisClient.set(`pending-email:${email}`, JSON.stringify(message), { ex: 900 });
+    await setCache(`pending-email:${email}`, message, 900);
   }
   
   res.json({
@@ -383,13 +383,13 @@ export const resetPassword = TryCatch(async (req, res, next) => {
   }
   const email = decoded.email;
 
-  const redisToken = await redisClient.get(`forget :${email}`);
+  const redisToken = await getCache(`forget :${email}`);
 
   if (!redisToken || redisToken !== token) {
     throw new ErrorHandler("Invalid or expired token", 400);
   }
 
-  await redisClient.del(`forget :${email}`);
+  await deleteCache(`forget :${email}`);
   const hashPassword = await bcrypt.hash(password, 10);
 
   await sql`UPDATE users SET password = ${hashPassword} WHERE email = ${email}`;

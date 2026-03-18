@@ -3,8 +3,11 @@ import dotenv from "dotenv";
 import userRoutes from "./routes/user.js";
 import cors from "cors";
 import client from "prom-client";
+import { connectRedis } from "./utils/redis.js";
 
 dotenv.config();
+
+connectRedis().catch(err => console.error("Failed to connect to Redis:", err));
 
 const app = express();
 const register = new client.Registry();

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { sql } from "../utils/db.js";
+import { getCache, setCache, CacheTTL } from "../utils/redis.js";
 
 dotenv.config();
 
@@ -46,13 +47,20 @@ export const isAuth = async (
       process.env.JWT_SECRET as string
     ) as jwt.JwtPayload;
     
-    console.log("[USER-DEBUG] Decoded payload:", decodedPayload);
-
     if(!decodedPayload || !decodedPayload.id){
         res.status(401).json({
             message: "Invalid or expired token",
           });
           return;
+    }
+    
+    const cacheKey = `user:${decodedPayload.id}:profile`;
+    const cachedUser = await getCache(cacheKey);
+
+    if (cachedUser && cachedUser.user_id) {
+        req.user = cachedUser;
+        next();
+        return;
     }
 
     const users =
@@ -87,6 +95,9 @@ export const isAuth = async (
     const user = users[0] as User;
 
     user.skills = user.skills || [];
+
+    await setCache(cacheKey, user, CacheTTL.MEDIUM);
+
     req.user = user;
 
     next();

@@ -6,6 +6,7 @@ import getBuffer from "../utils/buffer.js";
 import axios from "axios";
 import { applicationStatusUpdateTemplate } from "../templates.js";
 import { publishToTopic } from "../producer.js";
+import { getCache, setCache, deleteCache, deleteCachePattern, CacheTTL } from "../utils/redis.js";
 
 export const createCompany = TryCatch(
   async (req: AuthenticatedRequest, res, next) => {
@@ -143,6 +144,8 @@ export const createJob = TryCatch(
             ${job_type},${openings},${role},${work_location},${company_id},${user.user_id})
         RETURNING *`;
 
+    await deleteCachePattern(`jobs:active:*`);
+
     res.json({
       message: "Job created sucessfully",
       job: newJob,
@@ -198,6 +201,9 @@ export const updateJob = TryCatch(
             RETURNING *;
             `;
 
+    await deleteCache(`job:${req.params.jobId}`);
+    await deleteCachePattern(`jobs:active:*`);
+    
     res.json({
       message: "Job updated sucessfully",
       job: updatedJob,
@@ -245,6 +251,13 @@ export const getAllActiveJobs = TryCatch(
       limit?: string;
     };
 
+    const cacheKey = `jobs:active:p${page}:l${limit}:t${title || ''}:l${location || ''}`;
+    const cachedJobs = await getCache(cacheKey);
+
+    if (cachedJobs) {
+      return res.json(cachedJobs);
+    }
+
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
     const offset = (pageNum - 1) * limitNum;
@@ -287,7 +300,7 @@ export const getAllActiveJobs = TryCatch(
     const total = parseInt(totalResult[0].total, 10);
     const totalPages = Math.ceil(total / limitNum);
 
-    res.json({
+    const result = {
       jobs,
       pagination: {
         currentPage: pageNum,
@@ -296,12 +309,20 @@ export const getAllActiveJobs = TryCatch(
         hasNextPage: pageNum < totalPages,
         hasPrevPage: pageNum > 1
       }
-    });
+    };
+
+    await setCache(cacheKey, result, CacheTTL.SHORT);
+
+    res.json(result);
   }
 );
 
 export const getSingleJob = TryCatch(
     async(req:AuthenticatedRequest,res,next)=>{
+
+         const cacheKey = `job:${req.params.jobId}`;
+         const cachedJob = await getCache(cacheKey);
+         if(cachedJob) return res.json(cachedJob);
 
          const [job] = await sql `
           SELECT 
@@ -314,6 +335,7 @@ export const getSingleJob = TryCatch(
           WHERE j.job_id = ${req.params.jobId};
         `;
 
+        await setCache(cacheKey, job, CacheTTL.MEDIUM);
         res.json(job);
 
     }

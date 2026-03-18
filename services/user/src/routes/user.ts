@@ -6,7 +6,8 @@ import uploadFile from '../middleware/multer.js';
 const router=express.Router();
 
 router.get("/me",isAuth,myProfile);
-router.get("/:userId",getUserProfile);
+// Move dynamic route to bottom to prevents conflicts
+// router.get("/:userId",getUserProfile); 
 router.put("/update/profile", isAuth, updateUserProfile);
 router.put("/update/profile-pic", isAuth, uploadFile, updateProfilePic);
 router.put("/update/resume", isAuth, uploadFile, updateResume);
@@ -15,5 +16,8 @@ router.put("/delete/skills", isAuth, deleteSkilFromUser);
 router.post("/apply/job", isAuth, applyForJob);
 router.get("/application/all", isAuth,getAllApplications);
 router.get("/application/history/:applicationId", isAuth, getApplicationStatusHistory);
+
+// Dynamic routes must be last
+router.get("/:userId",getUserProfile);
 
 export default router;

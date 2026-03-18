@@ -1,3 +1,4 @@
+import { getCache, setCache, deleteCache, CacheTTL } from "../utils/redis.js";
 import axios from "axios";
 import { AuthenticatedRequest } from "../middleware/auth.js";
 import { TryCatch } from "../utils/TryCatch.js";
@@ -6,15 +7,23 @@ import { sql } from "../utils/db.js";
 import ErrorHandler from "../utils/errorHandler.js";
 
 export const myProfile = TryCatch(
-  async (req: AuthenticatedRequest, res, next) => {
-    const user = req.user;
-
-    res.json(user);
-  }
+    async (req: AuthenticatedRequest, res, next) => {
+        const user = req.user;
+        if (!user) {
+            return res.status(500).json({ message: "Internal Server Error: User context missing" });
+        }
+        res.status(200).json(user);
+    }
 );
 
 export const getUserProfile = TryCatch(async (req, res, next) => {
   const { userId } = req.params;
+
+  const cacheKey = `user:${userId}:profile`;
+  const cachedUser = await getCache(cacheKey);
+  if (cachedUser) {
+    return res.json(cachedUser);
+  }
 
   const users = await sql`
         SELECT 
@@ -44,6 +53,8 @@ export const getUserProfile = TryCatch(async (req, res, next) => {
   const user = users[0];
   user.skills = user.skills || [];
 
+  await setCache(cacheKey, user, CacheTTL.MEDIUM);
+
   res.json(user);
 });
 
@@ -70,6 +81,8 @@ export const updateUserProfile = TryCatch(
       WHERE user_id = ${user?.user_id}
       RETURNING user_id, name, email, phone_number, role, bio
     `;
+
+    await deleteCache(`user:${user.user_id}:profile`);
 
     res.json({
       message: "Profile updated successfully",
@@ -116,6 +129,8 @@ export const updateProfilePic = TryCatch(
       RETURNING user_id, name, email, phone_number, role, bio, profile_pic, profile_pic_public_id
     `;
 
+    await deleteCache(`user:${user.user_id}:profile`);
+
     res.json({
       message: "Profile picture updated successfully",
       user: updatedUser,
@@ -160,6 +175,8 @@ export const updateResume = TryCatch(
       WHERE user_id = ${user.user_id}
       RETURNING user_id, name, email, phone_number, role, bio, resume, resume_public_id
     `;
+    await deleteCache(`user:${user.user_id}:profile`);
+
     res.json({
       message: "Resume updated successfully",
       user: updatedUser,
@@ -218,6 +235,7 @@ export const addSkillToUser = TryCatch(
     if (!wasSkillAdded) {
       return res.json({ message: "Skill already exists for the user" });
     }
+    await deleteCache(`user:${userId}:profile`);
     res.json({ message: `Skill ${skillName.trim()} added successfully` });
   }
 );
@@ -249,6 +267,8 @@ export const deleteSkilFromUser = TryCatch(
         404
       );
     }
+
+    await deleteCache(`user:${user.user_id}:profile`);
 
     res.json({ message: `Skill ${skillName.trim()} deleted successfully` });
   }
