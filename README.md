@@ -95,7 +95,7 @@ Job-Portal/
 - **AI:** Google Generative AI (Gemini 2.5 Flash)
 - **Voice:** VAPI
 
-## � Documentation
+## 📚 Documentation
 
 Detailed documentation available in the `docs/` directory:
 
@@ -108,7 +108,117 @@ Detailed documentation available in the `docs/` directory:
   - [`MONITORING_SUMMARY.md`](docs/MONITORING_SUMMARY.md) — Observability stack details
   - [`ML_SEMANTIC_SEARCH_GUIDE.md`](docs/ML_SEMANTIC_SEARCH_GUIDE.md) — Semantic search implementation
 
-## �🚀 Getting Started
+- **Azure & Image Pipeline**
+  - [`build-images.ps1`](docs/build-images.ps1) — Build all service images for ACR
+  - [`push-images.ps1`](docs/push-images.ps1) — Push images to Azure Container Registry
+  - [`create-acr-secret.ps1`](docs/create-acr-secret.ps1) — Create Kubernetes pull secret for ACR
+
+## 📌 Current Project Status (March 2026)
+
+### Implemented and Working
+- ✅ Full microservices architecture with 7 services + 1 frontend
+- ✅ Helm-based Kubernetes deployment (`k8s/job-portal`)
+- ✅ Azure Container Registry image naming and tagging integrated in manifests and Helm values
+- ✅ Centralized configuration via ConfigMap + Secrets templates
+- ✅ Monitoring stack deployed (Prometheus + Grafana)
+- ✅ Metrics successfully available for 6/7 services (all Node.js services)
+
+### Partially Complete
+- ⚠️ ML metrics endpoint integration is pending in the Python service (service runs, monitoring endpoint needs finalization)
+
+### Deployment Readiness Summary
+- ✅ Local Kubernetes deployment is stable (Minikube + Helm)
+- ✅ Cloud image pipeline is prepared for Azure (ACR registry, push scripts, image pull secret script)
+- ✅ Ingress routing and path handling issues have documented fixes
+
+## ☁️ Azure Deployment Journey (From Start to Current State)
+
+### Phase 1: Local Containers
+- Built Dockerfiles for frontend + all services
+- Added build and push automation scripts
+- Standardized image tags and service-wise image naming
+
+### Phase 2: Kubernetes with Raw Manifests
+- Created namespace, configmap, secrets, services, frontend, monitoring, and ingress manifests
+- Validated full application deployment using `kubectl apply`
+
+### Phase 3: Helm Migration
+- Converted repeated manifests into reusable templates
+- Centralized environment and image values in one file: `k8s/job-portal/values.yaml`
+- Added separate templates for backend loop, frontend, ML service, and ingress variants
+
+### Phase 4: Azure Registry Integration
+- Switched image repositories to ACR format (`jobportalacr123.azurecr.io/<service>:v1`)
+- Added script to create Kubernetes docker-registry secret from Azure token
+- Added script-driven build/push flow for all services to the same registry
+
+### Phase 5: Monitoring & Reliability Hardening
+- Added Prometheus scraping + Grafana dashboards
+- Validated metrics pipeline and service health checks
+- Documented known failures and fix procedures in docs
+
+## 🚀 Azure Deployment Runbook (ACR + AKS)
+
+Use this when deploying beyond local Minikube to Azure Kubernetes Service.
+
+### Prerequisites
+- Azure CLI logged in (`az login`)
+- AKS cluster and ACR created
+- `kubectl` context set to AKS
+- Helm installed
+
+### 1. Build and Push Images to ACR
+```powershell
+.\docs\build-images.ps1 -Registry jobportalacr123.azurecr.io -Tag v1
+.\docs\push-images.ps1 -Registry jobportalacr123.azurecr.io -Tag v1
+```
+
+### 2. Allow AKS to Pull from ACR
+Recommended (managed identity attach):
+```powershell
+az aks update -n <aks-cluster-name> -g <resource-group> --attach-acr jobportalacr123
+```
+
+Alternative (token-based pull secret):
+```powershell
+.\docs\create-acr-secret.ps1
+```
+
+### 3. Deploy with Helm
+```powershell
+helm upgrade --install job-portal .\k8s\job-portal --namespace job-portal --create-namespace
+kubectl get pods -n job-portal
+```
+
+### 4. Validate Ingress and Services
+```powershell
+kubectl get svc -n job-portal
+kubectl get ingress -n job-portal
+kubectl logs -n job-portal -l app=auth-service --tail=100
+```
+
+## 🛠 Deployment Problems Faced and Solutions
+
+| Problem | Root Cause | Solution Implemented |
+| :--- | :--- | :--- |
+| Namespace apply failures | Namespace missing at initial deploy | Added explicit namespace manifest + Helm `--create-namespace` |
+| Frontend API URLs undefined | Next.js `NEXT_PUBLIC_*` variables required at build time | Added dedicated frontend rebuild flow with build args |
+| API path duplication (`/api/job/api/job/...`) | Incorrect base URL strategy with ingress rewrite | Set base URLs to root host and let ingress manage path prefixes |
+| DB connection string missing in service | Different env var naming across services | Mapped both `DB_URL` and `DATABASE_URL` to same secret value |
+| Redis `WRONGPASS` with Upstash | REST-token based client used by service | Added `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` |
+| ML ingress validation failures | Regex/pathType mismatch for Python route handling | Split ML ingress into dedicated manifest/template with compatible path handling |
+| Image pull failures in cluster | Registry/repository mismatch and pull auth not configured | Standardized ACR image names, created ACR pull secret, re-deployed |
+| Monitoring targets down | Missing `/metrics` exposure or stale images | Rebuilt services with metrics and corrected scrape configs |
+
+## ✅ Current Azure Deployment Status
+
+- ACR registry integration: **Implemented**
+- Helm deployment architecture: **Implemented**
+- Kubernetes manifests fallback: **Available**
+- Monitoring stack: **Implemented (6/7 targets up)**
+- Production AKS rollout path: **Documented and ready**
+
+## 🚀 Getting Started
 
 ### Prerequisites
 - Node.js 20+

@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: auth-service
-        image: abhay33/job-portal-auth:v3
+        image: jobportalacr123.azurecr.io/auth:v1
         ports:
         - containerPort: 5000
         envFrom:
@@ -57,7 +57,7 @@ spec:
     spec:
       containers:
       - name: user-service
-        image: abhay33/job-portal-user:v3
+        image: jobportalacr123.azurecr.io/user:v1
         ports:
         - containerPort: 5002
         envFrom:
@@ -99,7 +99,7 @@ spec:
     spec:
       containers:
       - name: job-service
-        image: abhay33/job-portal-job:v3
+        image: jobportalacr123.azurecr.io/job:v1
         ports:
         - containerPort: 5003
         envFrom:
@@ -141,7 +141,7 @@ spec:
     spec:
       containers:
       - name: utils-service
-        image: abhay33/job-portal-utils:v4
+        image: jobportalacr123.azurecr.io/utils:v1
         ports:
         - containerPort: 5001
         envFrom:
@@ -183,7 +183,7 @@ spec:
     spec:
       containers:
       - name: payment-service
-        image: abhay33/job-portal-payments:v2
+        image: jobportalacr123.azurecr.io/payments:v1
         ports:
         - containerPort: 5004
         envFrom:
@@ -225,7 +225,7 @@ spec:
     spec:
       containers:
       - name: interview-service
-        image: abhay33/job-portal-interview:v2
+        image: jobportalacr123.azurecr.io/interview:v1
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5005
@@ -268,7 +268,9 @@ spec:
     spec:
       containers:
       - name: ml-service
-        image: abhay33/job-portal-ml:01
+        image: jobportalacr123.azurecr.io/ml:v1
+        command: ["/bin/sh", "-c"]
+        args: ["pip install sentence-transformers && uvicorn src.api:app --host 0.0.0.0 --port 8000"]
         ports:
         - containerPort: 8000
         envFrom:

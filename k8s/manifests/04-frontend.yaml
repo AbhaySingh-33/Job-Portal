@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: abhay33/job-portal-frontend:05
+        image: jobportalacr123.azurecr.io/frontend:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3000
