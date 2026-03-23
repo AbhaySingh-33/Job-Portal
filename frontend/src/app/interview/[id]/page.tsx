@@ -126,7 +126,7 @@ export default function InterviewDetailPage() {
           {/* Interview Details Sidebar */}
           <div className="lg:col-span-1 space-y-6">
             {/* Interview Info Card */}
-            <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+            <Card className="border-0 shadow-lg bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Target className="h-5 w-5 text-blue-600" />
@@ -155,7 +155,7 @@ export default function InterviewDetailPage() {
             </Card>
 
             {/* Tech Stack Card */}
-            <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+            <Card className="border-0 shadow-lg bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Code className="h-5 w-5 text-purple-600" />
@@ -168,7 +168,7 @@ export default function InterviewDetailPage() {
                     <Badge 
                       key={index} 
                       variant="secondary" 
-                      className="bg-purple-100 text-purple-800 hover:bg-purple-200 transition-colors"
+                      className="bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/60 transition-colors"
                     >
                       {tech}
                     </Badge>

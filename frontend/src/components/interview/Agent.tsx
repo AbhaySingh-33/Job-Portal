@@ -344,7 +344,7 @@ STRICT RULE: After ${questionLimit} questions, immediately conclude and say good
   };
 
   return (
-    <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
+    <Card className="border-0 shadow-xl bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm">
       <CardHeader className="text-center pb-6">
         <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 text-white rounded-full mb-4 mx-auto">
           <Mic className="h-10 w-10" />
