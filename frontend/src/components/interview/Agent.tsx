@@ -473,6 +473,13 @@ export default function Agent({
     }
 
     const vapiInstance = new Vapi(vapiToken);
+    // Log masked token for debugging (never expose full token in production)
+    try {
+      const masked = vapiToken ? `${vapiToken.slice(0, 8)}...${vapiToken.slice(-6)}` : "(missing)";
+      console.info("VAPI token (masked):", masked);
+    } catch {
+      console.info("VAPI token: (error masking token)");
+    }
     setVapi(vapiInstance);
     vapiRef.current = vapiInstance;
 
@@ -510,8 +517,15 @@ export default function Agent({
 
     vapiInstance.on("call-start-failed", (event) => {
       lastStartErrorRef.current = event;
+      // Log detailed fields for debugging server-side 400 errors
       console.error("Vapi call-start-failed:", event);
-      console.error("Vapi call-start-failed JSON:", JSON.stringify(event, null, 2));
+      try {
+        console.error("Vapi call-start-failed JSON:", JSON.stringify(event, null, 2));
+      } catch {
+        console.error("Vapi call-start-failed: (failed to stringify event)");
+      }
+      if ((event as any)?.context) console.error("call-start context:", (event as any).context);
+      if ((event as any)?.error) console.error("call-start error detail:", (event as any).error);
       const parsedErrorMessage = getErrorMessage(event);
       toast.error(`Call start failed: ${parsedErrorMessage}`);
       cleanupCall();
@@ -535,8 +549,16 @@ export default function Agent({
         return;
       }
 
+      // Log structured error details to help identify server response body
       console.error("Vapi error:", error);
-      console.error("Vapi error JSON:", JSON.stringify(error, null, 2));
+      try {
+        console.error("Vapi error JSON:", JSON.stringify(error, null, 2));
+      } catch {
+        console.error("Vapi error: (failed to stringify error)");
+      }
+      if ((error as any)?.context) console.error("vapi error context:", (error as any).context);
+      if ((error as any)?.error) console.error("vapi nested error:", (error as any).error);
+      if ((error as any)?.statusCode) console.error("vapi statusCode:", (error as any).statusCode);
 
       const parsedErrorMessage = getErrorMessage(error);
       toast.error(`Error: ${parsedErrorMessage}`);
@@ -627,7 +649,44 @@ export default function Agent({
       }
     });
 
-    return () => { vapiInstance.stop(); };
+    // Dev-only: monkey-patch fetch to log outgoing Vapi start request bodies
+    let originalFetch: typeof fetch | null = null;
+    if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+      try {
+        originalFetch = window.fetch.bind(window);
+        // @ts-ignore - temporary dev instrumentation
+        window.fetch = async (input: RequestInfo, init?: RequestInit) => {
+          try {
+            const url = typeof input === "string" ? input : input instanceof Request ? input.url : String(input);
+            if (url.includes("api.vapi.ai/call/web") && init && init.body) {
+              try {
+                const bodyText = typeof init.body === "string" ? init.body : JSON.stringify(init.body);
+                console.info("[DEV LOG] Outgoing Vapi request body:", bodyText.slice(0, 2000));
+              } catch (e) {
+                console.warn("[DEV LOG] Could not stringify request body", e);
+              }
+            }
+          } catch (e) {
+            /* ignore dev logger errors */
+          }
+          return originalFetch!(input, init);
+        };
+      } catch (e) {
+        console.warn("Dev fetch patch failed:", e);
+      }
+    }
+
+    return () => {
+      vapiInstance.stop();
+      if (originalFetch && typeof window !== "undefined") {
+        try {
+          // @ts-ignore
+          window.fetch = originalFetch;
+        } catch {
+          // ignore
+        }
+      }
+    };
   }, [vapiToken, finalizeFeedback, injectContextUpdate]);
 
   const startCall = async () => {
@@ -679,15 +738,35 @@ export default function Agent({
         backgroundSound: "off" as const,
       };
 
+      // Build a strict transcriber object with only explicitly-allowed fields.
+      // Some SDKs or browser extensions may inject extra keys (e.g. `punctuate`)
+      // which the Vapi backend rejects intermittently with 400. Constructing
+      // a minimal transcriber object prevents accidental injection.
+      const sanitized = JSON.parse(JSON.stringify(assistant)) as CreateAssistantDTO;
+      if (sanitized.transcriber && typeof sanitized.transcriber === "object") {
+        sanitized.transcriber = {
+          provider: (sanitized.transcriber as any).provider,
+          model: (sanitized.transcriber as any).model,
+          language: (sanitized.transcriber as any).language,
+        } as any;
+      }
+
       console.info("Starting Vapi web call with payload summary", {
-        model: assistant.model?.model,
-        voiceProvider: assistant.voice?.provider,
-        transcriberProvider: assistant.transcriber?.provider,
+        model: sanitized.model?.model,
+        voiceProvider: sanitized.voice?.provider,
+        transcriberProvider: sanitized.transcriber?.provider,
         promptChars: systemPrompt.length,
         questionCount: questions.length,
       });
 
-      const startedCall = await vapi.start(assistant);
+      // Log sanitized transcriber details for debugging (non-sensitive)
+      try {
+        console.info("Sanitized transcriber:", JSON.stringify(sanitized.transcriber));
+      } catch {
+        /* ignore */
+      }
+
+      const startedCall = await vapi.start(sanitized);
       if (!startedCall) {
         const fallbackError = getErrorMessage(lastStartErrorRef.current || { message: "Call start rejected by Vapi" });
         throw new Error(fallbackError);

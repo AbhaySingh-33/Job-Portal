@@ -279,7 +279,7 @@ const JobPage = () => {
                           <Link href={app.resume} target="_blank" className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline">
                             <FileText size={11} />Resume
                           </Link>
-                          <Link href={`/account/${app.application_id}`} target="_blank" className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                          <Link href={`/account/${app.applicant_id}`} target="_blank" className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline">
                             <User size={11} />Profile
                           </Link>
                         </div>

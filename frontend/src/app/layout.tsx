@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 import NavBar from "@/components/navbar";
+import DevServiceWorkerCleanup from "@/components/dev-sw-cleanup";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppProvider } from "@/context/AppContext";
 import { Toaster } from "react-hot-toast";
@@ -20,6 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
+        <DevServiceWorkerCleanup />
         <AppProvider>
           <ThemeProvider
             attribute="class"
