@@ -1,15 +1,12 @@
 import { Response, NextFunction } from "express";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { Mistral } from "@mistralai/mistralai";
 import { sql } from "../utils/db.js";
 import { AuthenticatedRequest } from "../middleware/auth.js";
 
-// Helper to get initialized GenAI instance
-const getGenAI = () => {
-    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-    if (!apiKey) {
-        console.error("⚠️ GOOGLE_GENERATIVE_AI_API_KEY is missing/empty in process.env");
-    }
-    return new GoogleGenerativeAI(apiKey || "");
+const getMistral = () => {
+    const apiKey = process.env.MISTRAL_API_KEY;
+    if (!apiKey) console.error("⚠️ MISTRAL_API_KEY is missing in process.env");
+    return new Mistral({ apiKey: apiKey || "" });
 };
 
 // Helper function to determine question count based on experience level
@@ -56,50 +53,35 @@ export const generateQuestions = async (
         let questions: string[] = [];
 
         try {
-            // Attempt to generate questions using Gemini
-            const genAI = getGenAI();
-            
-            // Use specific configuration to enforce JSON
-            const model = genAI.getGenerativeModel({ 
-                model: "gemini-flash-latest",
-                generationConfig: { responseMimeType: "application/json" }
-            });
-            
-            const prompt = `Generate ${finalQuestionCount} technical interview questions for a ${level} level ${role} role. 
-            Tech Stack: ${techStack.join(", ")}.
-            
-            Return a JSON array of strings.`;
+            const mistral = getMistral();
+            const prompt = `Generate ${finalQuestionCount} technical interview questions for a ${level} level ${role} role.
+Tech Stack: ${techStack.join(", ")}.
+Return ONLY a JSON array of strings, no markdown, no explanation.`;
 
-            console.log("Sending question generation prompt to Gemini...");
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            let text = response.text();
-            
-            console.log("🤖 Gemini Question Response:", text.substring(0, 100) + "...");
-            
-            // Clean up potentially wrapped JSON (even with mimeType, sometimes it wraps)
+            console.log("Sending question generation prompt to Mistral...");
+            const result = await mistral.chat.complete({
+                model: "mistral-large-latest",
+                messages: [{ role: "user", content: prompt }],
+                responseFormat: { type: "json_object" },
+            });
+
+            let text = (result.choices?.[0]?.message?.content as string || "").trim();
+            console.log("🤖 Mistral Question Response:", text.substring(0, 100) + "...");
             text = text.replace(/```json/g, "").replace(/```/g, "").trim();
 
             try {
-                questions = JSON.parse(text);
-                
-                if (!Array.isArray(questions)) {
-                    // Sometimes it returns { "questions": [...] } structure if confusing
-                    if (questions['questions'] && Array.isArray(questions['questions'])) {
-                        questions = questions['questions'];
-                    } else {
-                        throw new Error("AI response is not an array");
-                    }
-                }
-                
-                // Sanitize and limit count
-                questions = questions.map((q: any) => String(q)).slice(0, finalQuestionCount);
-                
-                if (questions.length === 0) throw new Error("Empty question list from AI");
+                const parsed = JSON.parse(text);
+                questions = Array.isArray(parsed)
+                    ? parsed
+                    : parsed.questions && Array.isArray(parsed.questions)
+                    ? parsed.questions
+                    : Object.values(parsed).find((v) => Array.isArray(v)) as string[] || [];
 
+                questions = questions.map((q: any) => String(q)).slice(0, finalQuestionCount);
+                if (questions.length === 0) throw new Error("Empty question list from AI");
             } catch (parseError) {
-                console.warn("Failed to parse AI response for questions. Raw Text:", text);
-                throw parseError; // trigger fallback
+                console.warn("Failed to parse Mistral response. Raw:", text);
+                throw parseError;
             }
 
         } catch (aiError) {
@@ -178,40 +160,31 @@ export const generateFeedback = async (
 
         let feedback;
         
-        // Try to generate feedback with Gemini, with fallback
+        // Try to generate feedback with Mistral, with fallback
         try {
-            const genAI = getGenAI();
-            const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
-            const prompt = `Analyze this interview transcript and provide feedback in JSON format:
-            
-            Interview Role: ${interview[0].job_role}
-            Experience Level: ${interview[0].experience_level}
-            Tech Stack: ${interview[0].tech_stack}
-            Questions: ${JSON.stringify(interview[0].questions)}
-            
-            Transcript: ${transcript}
-            
-            Return ONLY valid JSON (no markdown, no code blocks) with this exact structure: {
-                "overallRating": number (0-100),
-            "strengths": ["strength1", "strength2", "strength3"],
-            "improvements": ["improvement1", "improvement2", "improvement3"],
-            "technicalScore": number (0-100),
-            "communicationScore": number (0-100),
-            "summary": "brief summary of performance"
-        }`;
+            const mistral = getMistral();
+            const prompt = `Analyze this interview transcript and return ONLY valid JSON (no markdown) with this exact structure:
+{"overallRating":number(0-100),"strengths":["s1","s2","s3"],"improvements":["i1","i2","i3"],"technicalScore":number(0-100),"communicationScore":number(0-100),"summary":"brief summary"}
 
-            const result = await model.generateContent(prompt);
-            const response = result.response;
-            const feedbackText = response.text().replace(/```json/g, "").replace(/```/g, "").trim();
-            
-            console.log("🤖 Gemini response:", feedbackText.substring(0, 200));
-            
+Role: ${interview[0].job_role} | Level: ${interview[0].experience_level} | Stack: ${interview[0].tech_stack}
+Questions: ${JSON.stringify(interview[0].questions)}
+Transcript: ${transcript}`;
+
+            const result = await mistral.chat.complete({
+                model: "mistral-large-latest",
+                messages: [{ role: "user", content: prompt }],
+                responseFormat: { type: "json_object" },
+            });
+
+            const feedbackText = (result.choices?.[0]?.message?.content as string || "").replace(/```json/g, "").replace(/```/g, "").trim();
+            console.log("🤖 Mistral feedback response:", feedbackText.substring(0, 200));
+
             try {
                 feedback = JSON.parse(feedbackText);
-                console.log("✅ Feedback parsed successfully from Gemini");
+                console.log("✅ Feedback parsed successfully from Mistral");
             } catch (parseError) {
-                console.error("❌ Failed to parse Gemini response, using fallback");
-                throw parseError; // Trigger outer catch for fallback
+                console.error("❌ Failed to parse Mistral response, using fallback");
+                throw parseError;
             }
         } catch (aiError) {
             console.error("❌ AI feedback generation failed, using intelligent fallback:", aiError instanceof Error ? aiError.message : aiError);

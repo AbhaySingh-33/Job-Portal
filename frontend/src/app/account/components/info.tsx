@@ -87,10 +87,10 @@ const Info: React.FC<AccountProps> = ({ user, isYourAccount }) => {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
-      <Card className="overflow-hidden shadow-lg border-2">
-        <div className="h-32 bg-blue-500 relative">
+      <Card className="overflow-hidden border border-slate-200/80 bg-white/80 shadow-2xl backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/75">
+        <div className="relative h-36 bg-linear-to-r from-cyan-600 via-blue-600 to-indigo-700">
           <div className="absolute -bottom-16 left-8">
-            <div className="w-32 h-32 rounded-full border-4 border-background overflow-hidden shadow-xl bg-background">
+            <div className="h-32 w-32 overflow-hidden rounded-full border-4 border-white bg-slate-100 shadow-2xl dark:border-slate-900 dark:bg-slate-800">
               <div className="relative group">
                 <img
                   src={user.profile_pic ? user.profile_pic : "/user.jpg"}
@@ -105,8 +105,7 @@ const Info: React.FC<AccountProps> = ({ user, isYourAccount }) => {
                     variant={"secondary"}
                     size={"icon"}
                     onClick={handelClick}
-                    className="absolute bottom-0 right-0
-                rounded-full h-10 w-10 shadow-lg"
+                    className="absolute bottom-0 right-0 h-10 w-10 rounded-full border border-slate-200 bg-white/90 text-slate-700 shadow-lg hover:bg-white dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-200"
                   >
                     <Camera size={18} />
                   </Button>
@@ -129,14 +128,14 @@ const Info: React.FC<AccountProps> = ({ user, isYourAccount }) => {
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-bold">{user.name}</h1>
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">{user.name}</h1>
                 {/* Edit button */}
                 {isYourAccount && (
                   <>
                     <Button
                       variant={"ghost"}
                       size={"icon"}
-                      className="h-8 w-8"
+                      className="h-8 w-8 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                       onClick={handelEditClick}
                     >
                       <Edit size={16} />
@@ -145,7 +144,7 @@ const Info: React.FC<AccountProps> = ({ user, isYourAccount }) => {
                 )}
               </div>
 
-              <div className="flex items-center gap-2 text-sm opacity-70">
+              <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
                 <Briefcase size={16} />
                 <span className="capitalize">{user.role}</span>
               </div>
@@ -154,29 +153,29 @@ const Info: React.FC<AccountProps> = ({ user, isYourAccount }) => {
 
           {/* Contact Info */}
           <div className="mt-8">
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
               <Mail size={20} className="text-blue-600" />
               Contact Information
             </h2>
 
             <div className="grid md:grid-cols-2 gap-4">
-              <div className="flex items-center gap-3 p-4 rounded-lg border hover:border-blue-500 transition-colors">
-                <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/70 p-4 transition-colors hover:border-cyan-400 dark:border-slate-700 dark:bg-slate-900/60 dark:hover:border-cyan-500">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cyan-100 dark:bg-cyan-900/40">
                   <Mail size={18} className="text-blue-600" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs opacity-70 font-medium">Email</p>
-                  <p className="text-sm truncate">{user.email}</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Email</p>
+                  <p className="truncate text-sm text-slate-800 dark:text-slate-200">{user.email}</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 p-4 rounded-lg border hover:border-blue-500 transition-colors">
-                <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/70 p-4 transition-colors hover:border-cyan-400 dark:border-slate-700 dark:bg-slate-900/60 dark:hover:border-cyan-500">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cyan-100 dark:bg-cyan-900/40">
                   <Phone size={18} className="text-blue-600" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs opacity-70 font-medium">Phone</p>
-                  <p className="text-sm truncate">{user.phone_number}</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Phone</p>
+                  <p className="truncate text-sm text-slate-800 dark:text-slate-200">{user.phone_number}</p>
                 </div>
               </div>
             </div>
@@ -185,20 +184,20 @@ const Info: React.FC<AccountProps> = ({ user, isYourAccount }) => {
           {/* Resume section */}
           {user.role === "jobseeker" && user.resume && (
             <div className="mt-8">
-              <h2 className="text-lg font-semibold mt-4 flex items-center gap-2">
+              <h2 className="mt-4 flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
                 <NotepadText size={20} className="text-blue-600" />
                 Resume
               </h2>
 
-              <div className="flex items-center gap-3 p-4 rounded-lg border hover:border-blue-500 transition-colors">
-                <div className="h-12 w-12 rounded-lg bg-red-100 dark:bg-red-900 flex items-center justify-center">
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/70 p-4 transition-colors hover:border-cyan-400 dark:border-slate-700 dark:bg-slate-900/60 dark:hover:border-cyan-500">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-rose-100 dark:bg-rose-900/40">
                   <NotepadText size={20} className="text-red-600" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium">Resume Document</p>
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200">Resume Document</p>
                   <Link
                     href={user.resume}
-                    className="text-sm text-blue-500 hover:underline"
+                    className="text-sm text-cyan-600 hover:underline dark:text-cyan-400"
                     target="_blank"
                   >
                     View Resume PDF
@@ -210,6 +209,7 @@ const Info: React.FC<AccountProps> = ({ user, isYourAccount }) => {
                     <Button
                       variant={"outline"}
                       size={"sm"}
+                      className="border-slate-300 bg-white/80 text-slate-700 hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                       onClick={handelResumeClick}
                     >
                       Edit Resume
@@ -229,12 +229,12 @@ const Info: React.FC<AccountProps> = ({ user, isYourAccount }) => {
 
           {/* Bio section */}
           {user.role === "jobseeker" && user.bio && (
-            <div className="mt-6 p-4 rounded-lg border">
-              <div className="flex items-center gap-2 mb-2 text-sm font-medium opacity-70">
+            <div className="mt-6 rounded-xl border border-slate-200 bg-white/70 p-4 dark:border-slate-700 dark:bg-slate-900/60">
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-400">
                 <FileText size={16} />
                 <span>About</span>
               </div>
-              <p className="text-base leading-relaxed">{user.bio}</p>
+              <p className="text-base leading-relaxed text-slate-700 dark:text-slate-200">{user.bio}</p>
             </div>
           )}
 
@@ -244,24 +244,24 @@ const Info: React.FC<AccountProps> = ({ user, isYourAccount }) => {
             <>
               {user.role === "jobseeker" && (
                 <div className="mt-8">
-                  <h2 className="text-lg font-semibold mt-4 flex items-center gap-2">
+                  <h2 className="mt-4 flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
                     <Crown size={20} className="text-blue-600" />
                     Subscription Status
                   </h2>
-                  <div className="p-6 rounded-lg bg-linear-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-950/20">
+                  <div className="rounded-xl border border-cyan-200/70 bg-linear-to-br from-cyan-50 to-blue-50 p-6 dark:border-cyan-900/40 dark:from-cyan-950/25 dark:to-blue-950/25">
                     {!user.subscription ? (
                       <>
                         <div className="flex items-center justify-between flex-wrap gap-4">
                           <div>
-                            <p className="font-semibold text-lg mb-1">
+                            <p className="mb-1 text-lg font-semibold text-slate-900 dark:text-slate-100">
                               No Active Subscription
                             </p>
-                            <p className="text-sm opacity-70">
+                            <p className="text-sm text-slate-600 dark:text-slate-300">
                               Subscribe to access premium features and benefits
                             </p>
                           </div>
                           <Button
-                            className="gap-2"
+                            className="gap-2 bg-linear-to-r from-cyan-600 to-blue-600 text-white hover:from-cyan-500 hover:to-blue-500"
                             onClick={() => router.push("/subscribe")}
                           >
                             <Crown size={18} />
@@ -282,7 +282,7 @@ const Info: React.FC<AccountProps> = ({ user, isYourAccount }) => {
                             </p>
                           </div>
 
-                          <p className="text-sm opacity-70">
+                          <p className="text-sm text-slate-600 dark:text-slate-300">
                             Valid until:{" "}
                             {new Date(user.subscription).toLocaleDateString(
                               "en-US",
@@ -294,7 +294,7 @@ const Info: React.FC<AccountProps> = ({ user, isYourAccount }) => {
                             )}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-green-700 tect-white font-medium">
+                        <div className="flex items-center gap-2 rounded-full bg-green-700 px-4 py-2 font-medium text-white">
                           <CheckCircle2 size={18} /> Subscribed
                         </div>
                       </div>
@@ -312,7 +312,7 @@ const Info: React.FC<AccountProps> = ({ user, isYourAccount }) => {
                               </p>
                             </div>
 
-                            <p className="text-sm opacity-70">
+                            <p className="text-sm text-slate-600 dark:text-slate-300">
                               Expired On:{" "}
                               {new Date(user.subscription).toLocaleDateString(
                                 "en-US",
@@ -352,9 +352,9 @@ const Info: React.FC<AccountProps> = ({ user, isYourAccount }) => {
         </DialogTrigger>
 
         {/* Dialog content here */}
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] border-slate-200 bg-white/95 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
           <DialogHeader>
-            <DialogTitle className="text-2xl">Edit profile</DialogTitle>
+            <DialogTitle className="text-2xl text-slate-900 dark:text-slate-100">Edit profile</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-5 py-4">

@@ -43,12 +43,18 @@ export default function InterviewDetailPage() {
         }
       );
       
-      if (response.data.success) {
+      if (response?.data?.success && response?.data?.data) {
         setInterview(response.data.data);
+      } else {
+        console.error("Unexpected response structure:", response?.data);
+        toast.error("Failed to fetch interview: Invalid response structure");
       }
     } catch (error) {
       console.error("Error fetching interview:", error);
-      toast.error("Failed to fetch interview details");
+      const errorMessage = error instanceof axios.AxiosError 
+        ? error.response?.data?.message || error.message 
+        : "Failed to fetch interview details";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -200,6 +206,7 @@ export default function InterviewDetailPage() {
               questions={interview.questions || []}
               jobRole={interview.job_role}
               experienceLevel={interview.experience_level}
+              techStack={interview.tech_stack || []}
             />
           </div>
         </div>

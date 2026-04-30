@@ -14,6 +14,23 @@ export const payment_service = process.env.NEXT_PUBLIC_PAYMENT_SERVICE;
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+function getErrorMessage(error: unknown, fallback: string) {
+  if (axios.isAxiosError(error)) {
+    return (
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.message ||
+      fallback
+    );
+  }
+
+  if (error instanceof Error) {
+    return error.message || fallback;
+  }
+
+  return fallback;
+}
+
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuth, setIsAuth] = useState(false);
@@ -38,7 +55,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       fetchUser();
       
     } catch (error: any) {
-      toast.error(error.response.data.message)
+      toast.error(getErrorMessage(error, "Failed to update profile picture"));
     }
     finally{
       setLoading(false);
@@ -61,7 +78,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       fetchUser();
       
     } catch (error: any) {
-      toast.error(error.response.data.message)
+      toast.error(getErrorMessage(error, "Failed to update resume"));
     }
     finally{
       setLoading(false);
@@ -83,7 +100,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       fetchUser();
       
     } catch (error: any) {
-      toast.error(error.response.data.message)
+      toast.error(getErrorMessage(error, "Failed to update profile"));
     }
     finally{
       setBtnLoading(false);
@@ -113,7 +130,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       setskill("");
       fetchUser();
     }catch (error: any) {
-      toast.error(error.response.data.message)
+      toast.error(getErrorMessage(error, "Failed to add skill"));
     }
     finally{
       setBtnLoading(false);
@@ -135,7 +152,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       toast.success(data.message);
       fetchUser();
     }catch (error: any) {
-      toast.error(error.response.data.message)
+      toast.error(getErrorMessage(error, "Failed to remove skill"));
     }
     finally{
       setBtnLoading(false);
@@ -188,7 +205,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       toast.success(data.message);
       fetchApplications();
     } catch (error: any) {
-      toast.error(error.response.data.message);
+      toast.error(getErrorMessage(error, "Failed to apply for job"));
     } finally {
       setBtnLoading(false);
     }

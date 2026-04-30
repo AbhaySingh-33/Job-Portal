@@ -64,13 +64,19 @@ export default function CreateInterviewPage() {
         }
       );
 
-      if (response.data.success) {
+      if (response?.data?.success && response?.data?.data?.id) {
         toast.success("Interview questions generated!");
         router.push(`/interview/${response.data.data.id}`);
+      } else {
+        console.error("Unexpected response structure:", response?.data);
+        toast.error("Failed to create interview: Invalid response structure");
       }
     } catch (error) {
       console.error("Error creating interview:", error);
-      toast.error("Failed to create interview");
+      const errorMessage = error instanceof axios.AxiosError 
+        ? error.response?.data?.message || error.message 
+        : "Failed to create interview";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

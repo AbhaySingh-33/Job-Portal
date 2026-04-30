@@ -50,7 +50,8 @@ const LoginPage = () => {
         fetchApplications();
       }
     } catch (error: any) {
-      toast.error(error.response.data.message);
+      const errorMsg = error?.response?.data?.message || error?.message || "Login failed";
+      toast.error(errorMsg);
       setIsAuth(false);
     } finally {
       setBtnLoading(false);
@@ -77,7 +78,8 @@ const LoginPage = () => {
       setIsAuth(true);
       fetchApplications();
     } catch (error: any) {
-      toast.error(error.response.data.message);
+      const errorMsg = error?.response?.data?.message || error?.message || "OTP verification failed";
+      toast.error(errorMsg);
     } finally {
       setBtnLoading(false);
     }

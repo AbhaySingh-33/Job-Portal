@@ -54,7 +54,8 @@ const RegisterPage = () => {
       // Don't set auth state immediately - wait for email verification
       // Redirect to a verification pending page or show message
     } catch (error: any) {
-      toast.error(error.response.data.message);
+      const errorMsg = error?.response?.data?.message || error?.message || "Registration failed";
+      toast.error(errorMsg);
       setIsAuth(false);
     } finally {
       setBtnLoading(false);
